@@ -5,7 +5,7 @@ using Test
     # Write your tests here.
     @testset "DAEDALUS model" begin
         try
-            epidemic_daedalus()
+            daedalus()
             @test true
         catch e
             @test false
