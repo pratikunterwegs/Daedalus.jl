@@ -16,7 +16,9 @@ makedocs(;
     checkdocs=:exports,
     pages=[
         "Home" => "index.md",
-        "Daedalus model" => "daedalus.md"
+        "Index" => "pkg_index.md",
+        "Function Reference" => "reference.md",
+        "Running daedalus" => "daedalus.md"
     ],
 )
 
