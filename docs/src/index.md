@@ -16,14 +16,3 @@ This documentation section is intended as a learning experience (for me) in writ
 [![SciML Code Style](https://img.shields.io/static/v1?label=code%20style&message=SciML&color=9558b2&labelColor=389826)](https://github.com/SciML/SciMLStyle)
 
 _Daedalus.jl_ is a Julia package that aims to mirror the [R package {daedalus}](https://github.com/jameel-institute/daedalus).
-
-## Index
-
-```@index
-```
-
-## Documentation
-
-```@autodocs
-Modules = [Daedalus, Daedalus.Data, Daedalus.Ode]
-```
