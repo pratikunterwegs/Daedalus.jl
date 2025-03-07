@@ -1,4 +1,6 @@
 
+export daedalus
+
 using DifferentialEquations
 using LinearAlgebra
 using StaticArrays
@@ -6,40 +8,7 @@ using StaticArrays
 using .Constants
 using .Ode
 using .Data
-
-function make_cond(threshold)::Function
-    function fn_cond(u, t, integrator)
-        H = @view u[:, iH, :]
-        total_hosp = sum(H)
-
-        total_hosp - threshold
-    end
-
-    return fn_cond
-end
-
-"""
-    condition(u, t, integrator)
-
-A condition function that triggers an event at a specific time.
-"""
-function cond_vax(u, t, integrator) # Event when condition(u,t,integrator) == 0
-    # trigger vaccination at t_vax, access by position
-    t == integrator.p[15]
-end
-
-"""
-    affect!(integrator)
-
-An event function.
-"""
-function start_vax!(integrator)
-    integrator.p[16] = true # initial value is 0.0
-end
-
-function reduce_beta!(integrator)
-    integrator.p[3] *= 0.2
-end
+using .Events
 
 """
     daedalus()
@@ -72,13 +41,9 @@ function daedalus(;
     # scale contacts by demography; divide col-wise
     contacts = contacts ./ demography
 
-    # prepare parameters to account for economic sector groups
-    i_working_age = 3
-    econ_sectors = 45
-
-    eta = [eta; repeat([eta[i_working_age]], econ_sectors)]
-    omega = [omega; repeat([omega[i_working_age]], econ_sectors)]
-    gamma_H = [gamma_H; repeat([gamma_H[i_working_age]], econ_sectors)]
+    eta = [eta; repeat([eta[i_WORKING_AGE]], N_ECON_GROUPS)]
+    omega = [omega; repeat([omega[i_WORKING_AGE]], N_ECON_GROUPS)]
+    gamma_H = [gamma_H; repeat([gamma_H[i_WORKING_AGE]], N_ECON_GROUPS)]
 
     # combined parameters into an array; this is not recommended but this cannot be a tuple
     # using a StaticArray for the `contacts` helps cut computation as this is assigned only once(?)
@@ -106,5 +71,3 @@ function daedalus(;
 
     return ode_solution
 end
-
-export daedalus
