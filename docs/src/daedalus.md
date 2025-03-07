@@ -9,7 +9,7 @@ using Daedalus
 using Plots
 
 # all arguments have appropriate defaults
-data = daedalus(time_end=600.0)
+data = daedalus()
 
 # plot exposed group
 plot(data, vars=(0, 50:99))
@@ -22,5 +22,5 @@ plot(data, vars=(0, 50:99))
 using Daedalus
 using BenchmarkTools
 
-@benchmark daedalus(time_end = 600.0)
+@benchmark daedalus()
 ```
