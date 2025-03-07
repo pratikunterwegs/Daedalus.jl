@@ -3,6 +3,7 @@
 
 module Data
 
+using ..Constants
 using StaticArrays
 
 export australia_initial_state, australia_demography, prepare_contacts,
@@ -68,12 +69,12 @@ Get a contact matrix for all age-groups and economic sectors as a StaticArrays
 """
 # Function to prepare 49x49 community contacts matrix
 function prepare_contacts(cm=australia_contacts())
-    cm_x = ones(49, 49) .* cm[3, 3]
-    cm_x[1:4, 1:4] = cm
-    cm_x[1:4, 5:49] .= cm[:, 3]
-    cm_x[5:49, 1:4] .= reshape(cm[3, :], 1, 4)
+    cm_x = ones(N_TOTAL_GROUPS, N_TOTAL_GROUPS) .* cm[i_WORKING_AGE, i_WORKING_AGE]
+    cm_x[i_AGE_GROUPS, i_AGE_GROUPS] = cm
+    cm_x[i_AGE_GROUPS, i_ECON_GROUPS] .= cm[:, i_WORKING_AGE]
+    cm_x[i_ECON_GROUPS, i_AGE_GROUPS] .= reshape(cm[i_WORKING_AGE, :], 1, N_AGE_GROUPS)
 
-    return SMatrix{49,49}(cm_x)
+    return SMatrix{N_TOTAL_GROUPS,N_TOTAL_GROUPS}(cm_x)
 end
 
 """
@@ -84,8 +85,8 @@ Get a population vector for all age-groups and economic sectors for the force of
 """
 # Function to prepare 49 element demography vector for I/N in FOI calculation
 function prepare_demog(demog=australia_demography(), workers=aus_workers())
-    demog_x = ones(49) * demog[3]
-    demog_x[1:4] = demog
+    demog_x = ones(N_TOTAL_GROUPS) * demog[i_WORKING_AGE]
+    demog_x[i_AGE_GROUPS] = demog
 
     return demog_x
 end
@@ -99,26 +100,30 @@ two vaccination strata for unvaccinated and vaccinated individuals.
 """
 function australia_initial_state(
     demography=australia_demography(), workers=aus_workers())
-    p_infected = 1e-6
-    p_susc = 1 - p_infected
-    compartments = 8
-    age_groups = 4
-    econ_groups = 45
 
-    init = [p_susc, 0.0, p_infected, 0.0, 0.0, 0.0, 0.0, 0.0]
-    init = reshape(init, 1, compartments)
-    init = repeat(init, age_groups + econ_groups)
+    # assume all infectious go into Is
+    p_infected = 1e-6
+    p_susc = 1.0 - p_infected
+
+    zero_compartments = zeros(N_COMPARTMENTS - 3)
+    init = [p_susc, 0.0, p_infected]
+    init = [init; zero_compartments]
+    init = reshape(init, 1, N_COMPARTMENTS)
+    init = repeat(init, N_TOTAL_GROUPS)
+
+    # assign to first layer
+    dummy = zeros(N_TOTAL_GROUPS, N_COMPARTMENTS, N_VACCINE_STRATA)
+    dummy[:, :, i_UNVAX_STRATUM] = init
 
     # process demography to calculate non-working working age, and concat
     # demography and worker counts
-    i_working_age = 3
-    inactive_workers = demography[i_working_age] - sum(workers)
-    demography[i_working_age] = inactive_workers
+    inactive_workers = demography[i_WORKING_AGE] - sum(workers)
+    demography[i_WORKING_AGE] = inactive_workers
 
     demography = [demography; workers]
 
     # multiply by demography - row i times element i
-    init = init .* demography
+    init = dummy .* demography
 
     return init
 end
