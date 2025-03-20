@@ -15,10 +15,10 @@ function daedalus_ode!(du, u, p, t)
     # each element of the tuple is one of the required params
     contacts, cw, beta, sigma, p_sigma, epsilon,
     rho, eta, omega, gamma_Ia, gamma_Is, gamma_H, nu, psi,
-    t_vax = p
+    t_vax, switch = p
 
     # time dependent vaccination
-    nu = t > t_vax ? nu : 0.0
+    nu = nu * switch
 
     # view the values of each compartment per age group
     # rows represent age groups, epi compartments are columns
