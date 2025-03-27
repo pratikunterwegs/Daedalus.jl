@@ -10,8 +10,8 @@ using ..Constants
 The ODE system for the DAEDALUS model. This function is intended to be called
     internally from `daedalus`.
 """
-function daedalus_ode!(du, u, p, t)
-    # du auto-magically takes the type of u (?)
+function daedalus_ode!(du::Array, u::Array, p::Array, t::Number)
+    # du auto-magically takes the dims and type of u (?)
     # each element of the tuple is one of the required params
     contacts, cw, beta, sigma, p_sigma, epsilon,
     rho, eta, omega, gamma_Ia, gamma_Is, gamma_H, nu, psi,
