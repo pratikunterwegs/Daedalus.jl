@@ -35,7 +35,7 @@ function daedalus(;
     psi::Number=1 / 270,
     t_vax::Number=200.0,
     time_end::Number=300.0,
-    threshold::Number=1000.0,
+    hospital_capacity::Number=1000.0,
     increment::Number=1.0)
 
     # scale contacts by demography; divide col-wise
@@ -60,14 +60,17 @@ function daedalus(;
         daedalus_ode!, initial_state, timespan, parameters
     )
 
-    cond_beta = make_cond(threshold)
-    cb_vax = DiscreteCallback(cond_vax, start_vax!)
-    cb_npi = ContinuousCallback(cond_beta, reduce_beta!)
+    # make callbacks and callbackset
+    condition_hosp_capacity = make_state_condition(hospital_capacity, iH)
+    condition_vax_time = make_time_condition(t_vax)
+    cb_vax = DiscreteCallback(condition_vax_time, start_vax!)
+    cb_npi = ContinuousCallback(condition_hosp_capacity, reduce_beta!)
 
     cb_set = CallbackSet(cb_vax, cb_npi)
 
-    # get the solution
-    ode_solution = solve(ode_problem, callback=cb_set, tstops=[t_vax])
+    # get the solution, ensuring that tstops includes t_vax
+        ode_solution = solve(ode_problem, save_everystep=false,
+        callback=cb_set, tstops=[t_vax])
 
     return ode_solution
 end
