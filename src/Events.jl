@@ -41,7 +41,7 @@ end
 An event function that begins vaccination by setting a vaccination flag to true.
 """
 function start_vax!(integrator)
-    integrator.p[16] = true # initial value is 0.0
+    integrator.p.switch = true # initial value is 0.0
 end
 
 """
@@ -50,7 +50,7 @@ end
 An event function that reduces beta by a fixed value.
 """
 function reduce_beta!(integrator)
-    integrator.p[3] *= 0.2
+    integrator.p.beta *= 0.2
 end
 
 end
