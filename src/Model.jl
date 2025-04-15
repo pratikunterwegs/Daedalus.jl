@@ -9,6 +9,7 @@ using .Constants
 using .Ode
 using .Data
 using .Events
+using .DaedalusStructs
 
 """
     daedalus()
@@ -26,17 +27,17 @@ function daedalus(;
     p_sigma=0.867,
     epsilon=0.58,
     rho=0.003,
-    eta=[0.018, 0.082, 0.018, 0.246],
-    omega=[0.012, 0.012, 0.012, 0.012],
+    eta::Vector{Float64}=[0.018, 0.082, 0.018, 0.246],
+    omega::Vector{Float64}=[0.012, 0.012, 0.012, 0.012],
     gamma_Ia=0.476,
     gamma_Is=0.25,
-    gamma_H=[0.034, 0.034, 0.034, 0.034],
-    nu=(2 / 100) / 7,
-    psi::Number=1 / 270,
-    t_vax::Number=200.0,
-    time_end::Number=300.0,
-    hospital_capacity::Number=1000.0,
-    increment::Number=1.0)
+    gamma_H::Vector{Float64}=[0.034, 0.034, 0.034, 0.034],
+    nu=(2.0 / 100.0) / 7.0,
+    psi::Float64=1.0 / 270.0,
+    t_vax::Float64=200.0,
+    time_end::Float64=300.0,
+    hospital_capacity::Float64=1000.0,
+    increment::Float64=1.0)
 
     # scale contacts by demography; divide col-wise
     contacts = contacts ./ demography
@@ -47,10 +48,10 @@ function daedalus(;
 
     # combined parameters into an array; this is not recommended but this cannot be a tuple
     # using a StaticArray for the `contacts` helps cut computation as this is assigned only once(?)
-    switch = false
-    parameters = [contacts, cw, beta, sigma, p_sigma, epsilon,
+    switch::Bool = false
+    parameters = Params(contacts, cw, beta, sigma, p_sigma, epsilon,
         rho, eta, omega, gamma_Ia, gamma_Is, gamma_H, nu, psi, t_vax,
-        switch]
+        switch)
 
     # prepare the timespan
     timespan = (0.0, time_end)
@@ -69,7 +70,7 @@ function daedalus(;
     cb_set = CallbackSet(cb_vax, cb_npi)
 
     # get the solution, ensuring that tstops includes t_vax
-        ode_solution = solve(ode_problem, save_everystep=false,
+    ode_solution = solve(ode_problem, save_everystep=false,
         callback=cb_set, tstops=[t_vax])
 
     return ode_solution
