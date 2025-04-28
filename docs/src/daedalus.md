@@ -13,7 +13,9 @@ data = daedalus()
 
 # plot exposed group
 plot(data, vars=(0, 50:99))
+```
 
+```@example basic_daedalus
 # plot exposed and vaccinated group
 # check that vaccinations begin at t = t_vax = 200.0
 plot(data, vars=(0, 343:392))

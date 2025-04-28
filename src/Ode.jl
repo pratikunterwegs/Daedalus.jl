@@ -15,16 +15,24 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
     # du auto-magically takes the dims and type of u (?)
     # each element of the tuple is one of the required params
     # time dependent vaccination
-    nu = p.nu * p.switch
+    nu_eff = p.nu * p.switch
 
     # view the values of each compartment per age group
     # rows represent age groups, epi compartments are columns
-    S = @view u[:, iS, :]
-    E = @view u[:, iE, :]
-    Is = @view u[:, iIs, :]
-    Ia = @view u[:, iIa, :]
-    H = @view u[:, iH, :]
-    R = @view u[:, iR, :]
+    size::Int = N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA
+    U = @view u[1:size]
+    U = reshape(U, (N_TOTAL_GROUPS, N_COMPARTMENTS, N_VACCINE_STRATA))
+
+    dU = @view du[1:size]
+    dU = reshape(dU, (N_TOTAL_GROUPS, N_COMPARTMENTS, N_VACCINE_STRATA))
+
+    # using views does not seem to affect performance greatly
+    S = @view U[:, iS, :]
+    E = @view U[:, iE, :]
+    Is = @view U[:, iIs, :]
+    Ia = @view U[:, iIa, :]
+    H = @view U[:, iH, :]
+    R = @view U[:, iR, :]
 
     # calculate new infections and re-infections
     community_infectious = sum(Is .+ Ia * p.epsilon, dims=2)
@@ -40,13 +48,13 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
     new_I[i_ECON_GROUPS, :] += new_I_work
 
     # views to the change array slice
-    dS = @view du[:, 1, :]
-    dE = @view du[:, 2, :]
-    dIs = @view du[:, 3, :]
-    dIa = @view du[:, 4, :]
-    dH = @view du[:, 5, :]
-    dR = @view du[:, 6, :]
-    dD = @view du[:, 7, :]
+    dS = @view dU[:, iS, :]
+    dE = @view dU[:, iE, :]
+    dIs = @view dU[:, iIs, :]
+    dIa = @view dU[:, iIa, :]
+    dH = @view dU[:, iH, :]
+    dR = @view dU[:, iR, :]
+    dD = @view dU[:, iD, :]
 
     # new vaccinations from susceptibles
     new_Svax = @view S[:, 1]
@@ -60,21 +68,17 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
     # note the use of @. for broadcasting, equivalent to .=
     # change in susceptibles
     @. dS = -new_I + (p.rho * R)
-    @. dS[:, 1] += (-new_Svax * p.nu + new_Swane * p.psi)
-    @. dS[:, 2] += (new_Svax * p.nu - new_Swane * p.psi)
+    @. dS[:, 1] += (-new_Svax * nu_eff + new_Swane * p.psi)
+    @. dS[:, 2] += (new_Svax * nu_eff - new_Swane * p.psi)
 
     # change in exposed
     @. dE = new_I - (p.sigma * E)
 
-    # calculate exposed to Is and Ia
-    E_sigma = (p.sigma * E) * p.p_sigma
-    E_inv_sigma = (p.sigma * E) * (1.0 - p.p_sigma)
-
     # change in infectious symptomatic
-    @. dIs = E_sigma - ((p.gamma_Is .+ p.eta) .* Is)
+    @. dIs = (p.sigma * E) * p.p_sigma - ((p.gamma_Is .+ p.eta) .* Is)
 
     # change in infectious asymptomatic
-    @. dIa = E_inv_sigma - (p.gamma_Ia * Ia)
+    @. dIa = (p.sigma * E) * (1.0 - p.p_sigma) - (p.gamma_Ia * Ia)
 
     # change in hospitalised
     @. dH = (p.eta .* Is) - ((p.gamma_H + p.omega) .* H)
@@ -83,13 +87,11 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
     @. dR = (p.gamma_Ia * Ia) + (p.gamma_Is * Is) +
             (p.gamma_H .* H) - (p.rho * R)
 
-    @. dR[:, 1] += (-new_Rvax * p.nu + new_Rwane * p.psi)
-    @. dR[:, 2] += (new_Rvax * p.nu - new_Rwane * p.psi)
+    @. dR[:, 1] += (-new_Rvax * nu_eff + new_Rwane * p.psi)
+    @. dR[:, 2] += (new_Rvax * nu_eff - new_Rwane * p.psi)
 
     # change in dead
     @. dD = p.omega .* H
 end
 
 end
-
-
