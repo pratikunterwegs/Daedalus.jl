@@ -70,7 +70,7 @@ function daedalus(;
     cb_set = CallbackSet(cb_vax, cb_npi)
 
     # get the solution, ensuring that tstops includes t_vax
-    ode_solution = solve(ode_problem, save_everystep=false,
+    ode_solution = solve(ode_problem, save_everystep=true,
         callback=cb_set, tstops=[t_vax])
 
     return ode_solution
