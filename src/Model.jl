@@ -35,6 +35,7 @@ function daedalus(;
     nu=(2.0 / 100.0) / 7.0,
     psi::Float64=1.0 / 270.0,
     t_vax::Float64=200.0,
+    npi_times::Vector{Float64}=[10.0, 70.0, 120.0],
     time_end::Float64=300.0,
     hospital_capacity::Float64=1000.0,
     increment::Float64=1.0)
@@ -65,13 +66,13 @@ function daedalus(;
     condition_hosp_capacity = make_state_condition(hospital_capacity, iH)
     condition_vax_time = make_time_condition(t_vax)
     cb_vax = DiscreteCallback(condition_vax_time, start_vax!)
-    cb_npi = ContinuousCallback(condition_hosp_capacity, reduce_beta!)
+    cb_npi = DiscreteCallback(make_time_condition(npi_times), reduce_beta!)
 
     cb_set = CallbackSet(cb_vax, cb_npi)
 
     # get the solution, ensuring that tstops includes t_vax
     ode_solution = solve(ode_problem, save_everystep=true,
-        callback=cb_set, tstops=[t_vax])
+        callback=cb_set, tstops=[t_vax; npi_times])
 
     return ode_solution
 end
