@@ -2,6 +2,7 @@
 module Events
 
 using ..Constants
+using DifferentialEquations
 
 export make_state_condition, make_time_condition, start_vax!, reduce_beta!
 
@@ -27,9 +28,9 @@ end
 
 A condition function that triggers an event at a specific time.
 """
-function make_time_condition(time)::Function
+function make_time_condition(times)::Function
     function fn_cond(u, t, integrator)
-        t == time
+        t in times
     end
 
     return fn_cond
@@ -45,12 +46,21 @@ function start_vax!(integrator)
 end
 
 """
-    affect!(integrator)
+    reduce_beta!(integrator)
 
 An event function that reduces beta by a fixed value.
 """
 function reduce_beta!(integrator)
-    integrator.p.beta *= 0.2
+    integrator.p.beta *= 0.8
+end
+
+"""
+    restore_beta!(integrator)
+
+An event function that restores beta by a fixed value.
+"""
+function restore_beta!(integrator)
+    integrator.p.beta *= 1.6
 end
 
 end
