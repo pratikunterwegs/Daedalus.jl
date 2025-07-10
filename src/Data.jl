@@ -58,7 +58,7 @@ This data is synthetic and not generated from the R package {daedalus}.
 """
 function worker_contacts(workers=aus_workers())
     # in proportion to workforce and scaled by workforce
-    return (2 .+ workers / sum(workers)) ./ workers
+    return SVector{N_ECON_GROUPS}(2 .+ workers / sum(workers)) ./ workers
 end
 
 """
