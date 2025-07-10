@@ -21,6 +21,27 @@ plot(data, vars=(0, 50:99))
 plot(data, vars=(0, 343:392))
 ```
 
+## Intervention
+
+```@example npi
+using Daedalus
+using Plots
+
+# make an NPI
+params = (coef = 0.2,)
+time_on = [30.0]
+time_off = [55.0]
+
+npi = Daedalus.DaedalusStructs.Npi(
+    params=params, time_on=time_on, time_off=time_off
+)
+
+data = daedalus(npi=npi)
+
+# plot output
+plot(data, vars=(0, 50:99))
+```
+
 ## Benchmarking
 
 ```@example benchmarking
