@@ -22,6 +22,7 @@ function daedalus(;
     contacts=prepare_contacts(),
     cw=worker_contacts(),
     demography=prepare_demog(),
+    hospital_capacity::Float64=1000.0,
     beta=0.01, # manual beta
     sigma=0.217,
     p_sigma=0.867,
@@ -34,10 +35,8 @@ function daedalus(;
     gamma_H::Vector{Float64}=[0.034, 0.034, 0.034, 0.034],
     nu=(2.0 / 100.0) / 7.0,
     psi::Float64=1.0 / 270.0,
-    t_vax::Float64=200.0,
-    npi_times::Vector{Float64}=[10.0, 70.0, 120.0],
-    time_end::Float64=300.0,
-    hospital_capacity::Float64=1000.0,
+    npi::Union{Npi,Nothing}=nothing,
+    time_end::Float64=100.0,
     increment::Float64=1.0)
 
     # scale contacts by demography; divide col-wise
@@ -49,10 +48,8 @@ function daedalus(;
 
     # combined parameters into an array; this is not recommended but this cannot be a tuple
     # using a StaticArray for the `contacts` helps cut computation as this is assigned only once(?)
-    switch::Bool = false
-    parameters = Params(contacts, cw, beta, sigma, p_sigma, epsilon,
-        rho, eta, omega, gamma_Ia, gamma_Is, gamma_H, nu, psi, t_vax,
-        switch)
+    parameters = Params(contacts, cw, beta, beta, sigma, p_sigma, epsilon,
+        rho, eta, omega, omega, gamma_Ia, gamma_Is, gamma_H, nu, psi)
 
     # prepare the timespan
     timespan = (0.0, time_end)
@@ -62,17 +59,23 @@ function daedalus(;
         daedalus_ode!, initial_state, timespan, parameters
     )
 
-    # make callbacks and callbackset
-    condition_hosp_capacity = make_state_condition(hospital_capacity, iH)
-    condition_vax_time = make_time_condition(t_vax)
-    cb_vax = DiscreteCallback(condition_vax_time, start_vax!)
-    cb_npi = DiscreteCallback(make_time_condition(npi_times), reduce_beta!)
+    # check if NPI is passed and define a callback if so
+    if (isnothing(npi))
+        cb_set = CallbackSet()
+        cb_times = []
+    else
+        fn_effect_on = make_param_changer("beta", *, 0.2)
+        fn_effect_off = make_param_reset("beta")
 
-    cb_set = CallbackSet(cb_vax, cb_npi)
+        cb_set = make_time_events(npi, fn_effect_on, fn_effect_off)
+        cb_times = get_times(npi)
+    end
 
     # get the solution, ensuring that tstops includes t_vax
     ode_solution = solve(ode_problem, save_everystep=true,
-        callback=cb_set, tstops=[t_vax; npi_times])
+        callback=cb_set,
+        tstops=cb_times
+    )
 
     return ode_solution
 end
