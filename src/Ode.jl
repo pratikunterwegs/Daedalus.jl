@@ -15,7 +15,7 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
     # du auto-magically takes the dims and type of u (?)
     # each element of the tuple is one of the required params
     # time dependent vaccination
-    nu_eff = p.nu * p.switch
+    nu_eff = p.nu
 
     # view the values of each compartment per age group
     # rows represent age groups, epi compartments are columns
@@ -36,12 +36,12 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
 
     # calculate new infections and re-infections
     community_infectious = sum(Is .+ Ia * p.epsilon, dims=2)
-    foi = p.beta * p.contacts * community_infectious
+    foi = p.beta_now * p.contacts * community_infectious
 
     # NOTE: element-wise multiplication
     new_I = S .* foi
 
-    # workplace
+    # workplace: TODO: add beta!
     new_I_work = S[i_ECON_GROUPS, :] .* p.cw .*
                  (Is[i_ECON_GROUPS, :] .+ (Ia[i_ECON_GROUPS, :] * p.epsilon))
 
