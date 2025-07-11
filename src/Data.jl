@@ -75,6 +75,7 @@ function consumer_worker_contacts(demography=australia_demography())
     ccw = repeat([1.0], N_ECON_GROUPS * N_AGE_GROUPS)
     ccw = reshape(ccw, N_ECON_GROUPS, N_AGE_GROUPS)
 
+    # colwise div by size of from groups
     ccw *= Diagonal(1 ./ demography[i_AGE_GROUPS])
 
     return SMatrix{N_ECON_GROUPS,N_AGE_GROUPS}(ccw)
@@ -88,18 +89,18 @@ Get a contact matrix for all age-groups and economic sectors as a StaticArrays
 """
 # Function to prepare 49x49 community contacts matrix
 function prepare_contacts(cm=australia_contacts())
-    # community contacts
+    # community contacts, colwise div by size of from-group
     cm_x = ones(N_TOTAL_GROUPS, N_TOTAL_GROUPS) .* cm[i_WORKING_AGE, i_WORKING_AGE]
     cm_x[i_AGE_GROUPS, i_AGE_GROUPS] = cm
     cm_x[i_AGE_GROUPS, i_ECON_GROUPS] .= cm[:, i_WORKING_AGE]
     cm_x[i_ECON_GROUPS, i_AGE_GROUPS] .= reshape(cm[i_WORKING_AGE, :], 1, N_AGE_GROUPS)
-    # cm_x = cm_x ./ prepare_demog()
+    cm_x *= Diagonal(1 ./ prepare_demog())
 
     # add consumer worker contacts
-    # cm_x[i_ECON_GROUPS, i_AGE_GROUPS] += consumer_worker_contacts()
+    cm_x[i_ECON_GROUPS, i_AGE_GROUPS] += consumer_worker_contacts()
 
     # # add workplace contacts
-    # diag(cm_x)[i_ECON_GROUPS] += worker_contacts()
+    diag(cm_x)[i_ECON_GROUPS] += worker_contacts()
 
     return SMatrix{N_TOTAL_GROUPS,N_TOTAL_GROUPS}(cm_x)
 end
