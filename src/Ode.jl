@@ -41,12 +41,6 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
     # NOTE: element-wise multiplication
     new_I = S .* foi
 
-    # workplace: TODO: add beta!
-    new_I_work = S[i_ECON_GROUPS, :] .* p.cw .*
-                 (Is[i_ECON_GROUPS, :] .+ (Ia[i_ECON_GROUPS, :] * p.epsilon))
-
-    new_I[i_ECON_GROUPS, :] += new_I_work
-
     # views to the change array slice
     dS = @view dU[:, iS, :]
     dE = @view dU[:, iE, :]
