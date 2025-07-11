@@ -23,7 +23,7 @@ function daedalus(;
     cw=worker_contacts(),
     demography=prepare_demog(),
     hospital_capacity::Float64=1000.0,
-    beta=0.01, # manual beta
+    beta=1.3/7.0, # manual beta assumes R0 = 1.3, infectious period = 7 days
     sigma=0.217,
     p_sigma=0.867,
     epsilon=0.58,
@@ -40,7 +40,7 @@ function daedalus(;
     increment::Float64=1.0)
 
     # scale contacts by demography; divide col-wise
-    contacts = contacts ./ demography
+    # contacts = contacts ./ demography
 
     eta = [eta; repeat([eta[i_WORKING_AGE]], N_ECON_GROUPS)]
     omega = [omega; repeat([omega[i_WORKING_AGE]], N_ECON_GROUPS)]

@@ -29,14 +29,14 @@ using Plots
 
 # make an NPI
 params = (coef = 0.2,)
-time_on = [30.0]
-time_off = [55.0]
+time_on = [30.0, 50.0]
+time_off = [45.0, 65.0]
 
 npi = Daedalus.DaedalusStructs.Npi(
     params=params, time_on=time_on, time_off=time_off
 )
 
-data = daedalus(npi=npi)
+data = daedalus(beta=0.1, npi=npi)
 
 # plot output
 plot(data, vars=(0, 50:99))
