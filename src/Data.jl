@@ -4,6 +4,7 @@
 module Data
 
 using ..Constants
+using LinearAlgebra
 using StaticArrays
 
 export australia_initial_state, australia_demography, prepare_contacts,
@@ -58,21 +59,47 @@ This data is synthetic and not generated from the R package {daedalus}.
 """
 function worker_contacts(workers=aus_workers())
     # in proportion to workforce and scaled by workforce
-    return SVector{N_ECON_GROUPS}(2 .+ workers / sum(workers)) ./ workers
+    # copied from daedalus
+    x = [2.631914, 2.987097, 1.596491, 4.054598, 3.411043, 3.859485, 3.703986,
+        2.940717, 4.228946, 3.412338, 3.376182, 4.320048, 4.060252, 3.481894,
+        3.414952, 3.572400, 4.560859, 4.238756, 3.824205, 4.306815, 3.689804,
+        4.045977, 3.841705, 4.229816, 2.849089, 6.236203, 4.417307, 3.089810,
+        4.912008, 5.114559, 5.504402, 6.796370, 5.138382, 4.043629, 3.410849,
+        4.790890, 6.218820, 4.587976, 4.946564, 4.982976, 8.793487, 5.908916,
+        6.035379, 3.382336, 3.263660]
+
+    return SVector{N_ECON_GROUPS}(x ./ workers)
+end
+
+function consumer_worker_contacts(demography=australia_demography())
+    ccw = repeat([1.0], N_ECON_GROUPS * N_AGE_GROUPS)
+    ccw = reshape(ccw, N_ECON_GROUPS, N_AGE_GROUPS)
+
+    ccw *= Diagonal(1 ./ demography[i_AGE_GROUPS])
+
+    return SMatrix{N_ECON_GROUPS,N_AGE_GROUPS}(ccw)
 end
 
 """
     prepare_contacts()
 
 Get a contact matrix for all age-groups and economic sectors as a StaticArrays
-    `SMatrix`.
+    `SMatrix`. Operates on default data.
 """
 # Function to prepare 49x49 community contacts matrix
 function prepare_contacts(cm=australia_contacts())
+    # community contacts
     cm_x = ones(N_TOTAL_GROUPS, N_TOTAL_GROUPS) .* cm[i_WORKING_AGE, i_WORKING_AGE]
     cm_x[i_AGE_GROUPS, i_AGE_GROUPS] = cm
     cm_x[i_AGE_GROUPS, i_ECON_GROUPS] .= cm[:, i_WORKING_AGE]
     cm_x[i_ECON_GROUPS, i_AGE_GROUPS] .= reshape(cm[i_WORKING_AGE, :], 1, N_AGE_GROUPS)
+    # cm_x = cm_x ./ prepare_demog()
+
+    # add consumer worker contacts
+    # cm_x[i_ECON_GROUPS, i_AGE_GROUPS] += consumer_worker_contacts()
+
+    # # add workplace contacts
+    # diag(cm_x)[i_ECON_GROUPS] += worker_contacts()
 
     return SMatrix{N_TOTAL_GROUPS,N_TOTAL_GROUPS}(cm_x)
 end
