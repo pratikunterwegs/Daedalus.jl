@@ -95,11 +95,11 @@ function make_param_reset(param_name)
 end
 
 """
-    make_events(x::Npi)
+    make_events(x::TimedNpi)
 
-Make a CallbackSet from an Npi struct.
+Make a CallbackSet from a TimedNpi struct.
 """
-make_time_events(x::Npi, effect_on::Function, effect_off::Function) = begin
+make_time_events(x::TimedNpi, effect_on::Function, effect_off::Function) = begin
     npi_times_on = x.resparams.time_on
     npi_times_off = x.resparams.time_off
     coef = x.params.coef
@@ -110,11 +110,11 @@ make_time_events(x::Npi, effect_on::Function, effect_off::Function) = begin
     return CallbackSet(cb_npi_on, cb_npi_off)
 end
 
-get_times(x::ResponseData) = begin
+get_times(x::TimedResponseData) = begin
     return [x.time_on; x.time_off]
 end
 
-get_times(x::Npi) = begin
+get_times(x::TimedNpi) = begin
     return get_times(x.resparams)
 end
 

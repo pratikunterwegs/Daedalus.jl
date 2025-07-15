@@ -3,7 +3,7 @@ module DaedalusStructs
 
 using StaticArrays
 
-export Params, ResponseData, Npi
+export Params, TimedResponseData, TimedNpi, ReactiveResponseData, ReactiveNpi
 
 """
     Params
@@ -31,33 +31,94 @@ mutable struct Params
 end
 
 """
-    ResponseData
+    TimedResponseData
 
-A struct to hold common response parameters.
+A struct to hold common timed response parameters.
 """
-struct ResponseData
+struct TimedResponseData
     time_on::Vector{Float64}
     time_off::Vector{Float64}
 end
 
-function ResponseData(; time_on::Vector{Float64}, time_off::Vector{Float64})
+"""
+    TimedResponseData
+
+A struct to hold common reactive response parameters.
+"""
+struct ReactiveResponseData
+    state_on::Vector{Float64}
+    state_off::Vector{Float64}
+end
+
+"""
+    TimedResponseData()
+
+Construct `TimedResponseData` structs.
+"""
+function TimedResponseData(; time_on::Vector{Float64}, time_off::Vector{Float64})
     # input checking
     if length(time_on) != length(time_off)
         throw(ArgumentError("time_on and time_off must have the same length."))
     end
 
-    return ResponseData(time_on, time_off)
+    return TimedResponseData(time_on, time_off)
 end
 
-struct Npi
-    resparams::ResponseData
+"""
+    ReactiveResponseData()
+
+Construct `ReactiveResponseData` structs.
+"""
+function ReactiveResponseData(; state_on::Vector{Float64}, state_off::Vector{Float64})
+    # input checking
+    if length(state_on) != length(state_off)
+        throw(ArgumentError("state_on and state_off must have the same length."))
+    end
+
+    return ReactiveResponseData(state_on, state_off)
+end
+
+"""
+    TimedNpi
+
+A struct to specify a time-bound NPI.
+"""
+struct TimedNpi
+    resparams::TimedResponseData
     params::NamedTuple
 end
 
-function Npi(; params::NamedTuple, time_on::Vector{Float64}, time_off::Vector{Float64})
-    resparams = ResponseData(time_on=time_on, time_off=time_off)
+"""
+    TimedNpi
 
-    return Npi(resparams, params)
+Function to specify a time-bound NPI.
+"""
+function TimedNpi(; params::NamedTuple, time_on::Vector{Float64}, time_off::Vector{Float64})
+    resparams = TimedResponseData(time_on=time_on, time_off=time_off)
+
+    return TimedNpi(resparams, params)
+end
+
+"""
+    ReactiveNpi
+
+A struct to specify a reactive NPI that responds to a state value.
+"""
+struct ReactiveNpi
+    resparams::ReactiveResponseData
+    params::NamedTuple
+end
+
+"""
+    ReactiveNpi
+
+Function to specify a reactive NPI that responds to a state value.
+"""
+function ReactiveNpi(; params::NamedTuple, state_on::Vector{Float64},
+    state_off::Vector{Float64})
+    resparams = ReactiveResponseData(state_on=state_on, state_off=state_off)
+
+    return ReactiveNpi(resparams, params)
 end
 
 end
