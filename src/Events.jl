@@ -12,14 +12,24 @@ export make_state_condition, make_time_condition, start_vax!, reduce_beta!,
     make_cond(threshold)::Function
 
 Factory function for conditions. Makes a function that checks whether a root is
-    found at the sum of a state index.
+    found at the sum of a state index. Passing `crossing = "up"` checks for an
+    increasing root (-1 to +1), while `crossing = "down"` checks for a
+    decreasing root (+1 to -1).
 """
-function make_state_condition(threshold, index)::Function
+function make_state_condition(threshold, index, crossing)::Function
     function fn_cond(u, t, integrator)
         X = @view u[:, index, :]
         state_sum = sum(X)
 
-        state_sum - threshold
+        if crossing == "up"
+            return state_sum - threshold
+        elseif crossing == "down"
+            return threshold - state_sum
+        else
+            error("State condition maker: `crossing` must be 'up' or 'down'.")
+        end
+
+        return state_sum - threshold
     end
 
     return fn_cond
