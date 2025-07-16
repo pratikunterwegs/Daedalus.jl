@@ -27,4 +27,17 @@ const N_VACCINE_STRATA = 2
 const i_UNVAX_STRATUM = 1
 const i_VAX_STRATUM = 2
 
+"""
+    get_indices(compartment::String)
+
+Get compartment indices for state tests.
+    """
+get_indices(compartment::String) = begin
+    idx_comp = eval(Symbol("i" * compartment))
+    final_idx = idx_comp * N_TOTAL_GROUPS
+    first_idx = final_idx - N_TOTAL_GROUPS + 1
+
+    return first_idx:final_idx
+end
+
 end

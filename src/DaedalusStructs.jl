@@ -3,7 +3,8 @@ module DaedalusStructs
 
 using StaticArrays
 
-export Params, TimedResponseData, TimedNpi, ReactiveResponseData, ReactiveNpi
+export Params, TimedResponseData, TimedNpi, ReactiveResponseData, ReactiveNpi,
+    Npi
 
 """
     Params
@@ -41,16 +42,6 @@ struct TimedResponseData
 end
 
 """
-    TimedResponseData
-
-A struct to hold common reactive response parameters.
-"""
-struct ReactiveResponseData
-    state_on::Vector{Float64}
-    state_off::Vector{Float64}
-end
-
-"""
     TimedResponseData()
 
 Construct `TimedResponseData` structs.
@@ -64,26 +55,14 @@ function TimedResponseData(; time_on::Vector{Float64}, time_off::Vector{Float64}
     return TimedResponseData(time_on, time_off)
 end
 
-"""
-    ReactiveResponseData()
-
-Construct `ReactiveResponseData` structs.
-"""
-function ReactiveResponseData(; state_on::Vector{Float64}, state_off::Vector{Float64})
-    # input checking
-    if length(state_on) != length(state_off)
-        throw(ArgumentError("state_on and state_off must have the same length."))
-    end
-
-    return ReactiveResponseData(state_on, state_off)
-end
+abstract type Npi end
 
 """
     TimedNpi
 
 A struct to specify a time-bound NPI.
 """
-struct TimedNpi
+struct TimedNpi <: Npi
     resparams::TimedResponseData
     params::NamedTuple
 end
@@ -100,23 +79,59 @@ function TimedNpi(; params::NamedTuple, time_on::Vector{Float64}, time_off::Vect
 end
 
 """
-    ReactiveNpi
+    ReactiveResponseData
 
-A struct to specify a reactive NPI that responds to a state value.
+A struct to hold common reactive response parameters.
 """
-struct ReactiveNpi
-    resparams::ReactiveResponseData
-    params::NamedTuple
+struct ReactiveResponseData
+    id_state_on::Union{Vector{Int},UnitRange{Int}}
+    id_state_off::Union{Vector{Int},UnitRange{Int}}
+    value_state_on::Float64
+    value_state_off::Float64
+end
+
+"""
+    ReactiveResponseData()
+
+Construct `ReactiveResponseData` structs.
+"""
+function ReactiveResponseData(;
+    id_state_on::Union{Vector{Int},UnitRange{Int}},
+    id_state_off::Union{Vector{Int},UnitRange{Int}},
+    value_state_on::Float64,
+    value_state_off::Float64)
+
+    # TODO: input checking
+
+    return ReactiveResponseData(
+        id_state_on, id_state_off, value_state_on, value_state_off
+    )
 end
 
 """
     ReactiveNpi
 
+A struct to specify a reactive NPI that responds to a state value.
+"""
+struct ReactiveNpi <: Npi
+    resparams::ReactiveResponseData
+    params::NamedTuple
+end
+
+"""
+    ReactiveNpi()
+
 Function to specify a reactive NPI that responds to a state value.
 """
-function ReactiveNpi(; params::NamedTuple, state_on::Vector{Float64},
-    state_off::Vector{Float64})
-    resparams = ReactiveResponseData(state_on=state_on, state_off=state_off)
+function ReactiveNpi(; params::NamedTuple, id_state_on::Union{Vector{Int},UnitRange{Int}},
+    id_state_off::Union{Vector{Int},UnitRange{Int}},
+    value_state_on::Float64,
+    value_state_off::Float64)
+
+    resparams = ReactiveResponseData(
+        id_state_on=id_state_on, id_state_off=id_state_off,
+        value_state_on=value_state_on, value_state_off=value_state_off
+    )
 
     return ReactiveNpi(resparams, params)
 end

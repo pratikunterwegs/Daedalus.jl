@@ -35,7 +35,7 @@ function daedalus(;
     gamma_H::Vector{Float64}=[0.034, 0.034, 0.034, 0.034],
     nu=(2.0 / 100.0) / 7.0,
     psi::Float64=1.0 / 270.0,
-    npi::Union{Npi,Nothing}=nothing,
+    npi::Union{TimedNpi,ReactiveNpi,Nothing}=nothing,
     time_end::Float64=100.0,
     increment::Float64=1.0)
 
@@ -53,6 +53,7 @@ function daedalus(;
 
     # prepare the timespan
     timespan = (0.0, time_end)
+    savepoints = 0.0:1.0:time_end
 
     # define the ode problem
     ode_problem = ODEProblem(
@@ -63,16 +64,25 @@ function daedalus(;
     if (isnothing(npi))
         cb_set = CallbackSet()
         cb_times = []
-    else
-        fn_effect_on = make_param_changer("beta", *, 0.2)
+    elseif (typeof(npi) == Daedalus.DaedalusStructs.TimedNpi)
+        coef = get_coef(npi)
+
+        fn_effect_on = make_param_changer("beta", *, coef)
         fn_effect_off = make_param_reset("beta")
 
-        cb_set = make_time_events(npi, fn_effect_on, fn_effect_off)
+        cb_set = make_events(npi, fn_effect_on, fn_effect_off)
         cb_times = get_times(npi)
+    else
+        coef = get_coef(npi)
+        fn_effect_on = make_param_changer("omega", .*, coef)
+        fn_effect_off = make_param_reset("omega")
+        
+        cb_set = make_events(npi, fn_effect_on, fn_effect_off)
+        cb_times = []
     end
 
     # get the solution, ensuring that tstops includes t_vax
-    ode_solution = solve(ode_problem, save_everystep=true,
+    ode_solution = solve(ode_problem, saveat=savepoints,
         callback=cb_set,
         tstops=cb_times
     )
