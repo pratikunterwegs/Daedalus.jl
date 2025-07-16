@@ -75,7 +75,7 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
     @. dIa = (p.sigma * E) * (1.0 - p.p_sigma) - (p.gamma_Ia * Ia)
 
     # change in hospitalised
-    @. dH = (p.eta .* Is) - ((p.gamma_H + p.omega) .* H)
+    @. dH = (p.eta .* Is) - ((p.gamma_H + p.omega_now) .* H)
 
     # change in recovered
     @. dR = (p.gamma_Ia * Ia) + (p.gamma_Is * Is) +
@@ -85,7 +85,7 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
     @. dR[:, 2] += (new_Rvax * nu_eff - new_Rwane * p.psi)
 
     # change in dead
-    @. dD = p.omega .* H
+    @. dD = p.omega_now .* H
 end
 
 end

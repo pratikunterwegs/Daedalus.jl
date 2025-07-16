@@ -5,8 +5,9 @@ using ..Constants
 using ..DaedalusStructs
 using DifferentialEquations
 
-export make_state_condition, make_time_condition, start_vax!, reduce_beta!,
-    make_time_events, get_times, make_param_changer, make_param_reset
+export make_state_condition, make_time_condition, start_vax!,
+    make_events, get_times, make_param_changer, make_param_reset,
+    get_coef
 
 """
     make_cond(threshold)::Function
@@ -16,9 +17,9 @@ Factory function for conditions. Makes a function that checks whether a root is
     increasing root (-1 to +1), while `crossing = "down"` checks for a
     decreasing root (+1 to -1).
 """
-function make_state_condition(threshold, index, crossing)::Function
+function make_state_condition(threshold, idx, crossing)::Function
     function fn_cond(u, t, integrator)
-        X = @view u[:, index, :]
+        X = @view u[idx]
         state_sum = sum(X)
 
         if crossing == "up"
@@ -58,24 +59,6 @@ function start_vax!(integrator)
 end
 
 """
-    reduce_beta!(integrator)
-
-An event function that reduces beta by a fixed value.
-"""
-function reduce_beta!(integrator)
-    integrator.p.beta *= 0.2
-end
-
-"""
-    restore_beta!(integrator)
-
-An event function that restores beta by a fixed value.
-"""
-function restore_beta!(integrator)
-    integrator.p.beta *= 1.6
-end
-
-"""
     make_param_changer(param_name, func, coef)
 
 A function factory to generate effect functions.
@@ -99,10 +82,9 @@ end
 
 Make a CallbackSet from a TimedNpi struct.
 """
-make_time_events(x::TimedNpi, effect_on::Function, effect_off::Function) = begin
+make_events(x::TimedNpi, effect_on::Function, effect_off::Function) = begin
     npi_times_on = x.resparams.time_on
     npi_times_off = x.resparams.time_off
-    coef = x.params.coef
 
     cb_npi_on = DiscreteCallback(make_time_condition(npi_times_on), effect_on)
     cb_npi_off = DiscreteCallback(make_time_condition(npi_times_off), effect_off)
@@ -117,5 +99,28 @@ end
 get_times(x::TimedNpi) = begin
     return get_times(x.resparams)
 end
+
+"""
+    make_events(x::ReactiveNpi)
+
+Make a CallbackSet from a ReactiveNpi struct.
+"""
+make_events(x::ReactiveNpi, effect_on::Function, effect_off::Function) = begin
+    npi_idx_on = x.resparams.id_state_on
+    npi_idx_off = x.resparams.id_state_off
+    npi_value_on = x.resparams.value_state_on
+    npi_value_off = x.resparams.value_state_off
+
+    cb_npi_on = ContinuousCallback(
+        make_state_condition(npi_value_on, npi_idx_on, "up"), effect_on
+    )
+    cb_npi_off = ContinuousCallback(
+        make_state_condition(npi_value_off, npi_idx_off, "down"), effect_off
+    )
+
+    return CallbackSet(cb_npi_on, cb_npi_off)
+end
+
+get_coef(x::Npi) = x.params.coef
 
 end
