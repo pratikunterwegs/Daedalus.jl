@@ -7,7 +7,7 @@ using DifferentialEquations
 
 export make_state_condition, make_time_condition, start_vax!,
     make_events, get_times, make_param_changer, make_param_reset,
-    get_coef
+    get_coef, make_value_saver
 
 """
     make_cond(threshold)::Function
