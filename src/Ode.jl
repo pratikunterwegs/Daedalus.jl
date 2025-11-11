@@ -92,7 +92,7 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
 
     # change in Rt
     prev_rt = u[i_Rt_cont]
-    new_rt = p.beta * (sum(S) / sum(U)) * 7.0
+    new_rt = p.beta * (sum(S) / sum(U)) / p.gamma_Is
     du[i_Rt] = new_rt
     du[i_Rt_cont] = new_rt - prev_rt
 end

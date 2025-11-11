@@ -23,7 +23,7 @@ function daedalus(;
     cw=worker_contacts(),
     demography=prepare_demog(),
     hospital_capacity::Float64=1000.0,
-    beta=1.3 / 7.0, # manual beta assumes R0 = 1.3, infectious period = 7 days
+    r0=1.3, # manual beta assumes R0 = 1.3, infectious period = 7 days
     sigma=0.217,
     p_sigma=0.867,
     epsilon=0.58,
@@ -33,12 +33,11 @@ function daedalus(;
     gamma_Ia=0.476,
     gamma_Is=0.25,
     gamma_H::Vector{Float64}=[0.034, 0.034, 0.034, 0.034],
-    nu=(2.0 / 100.0) / 7.0,
+    nu=0.0,
     psi::Float64=1.0 / 270.0,
     npi::Union{TimedNpi,ReactiveNpi,Nothing}=nothing,
     time_end::Float64=100.0,
-    increment::Float64=1.0,
-    print=false)
+    increment::Float64=1.0)
 
     # scale contacts by demography; divide col-wise
     # contacts = contacts ./ demography
@@ -70,7 +69,7 @@ function daedalus(;
     size = N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA
 
     savingcb = SavingCallback(
-        (u, t, integrator) -> integrator.p.beta * (sum(u[idx_susceptible]) / sum(u[1:size])) * 7.0,
+        (u, t, integrator) -> u[size + i_rel_Rt_cont],
         saved_values, saveat=savepoints)
 
     function affect!(integrator)
@@ -78,7 +77,7 @@ function daedalus(;
         if (length(saved_values.saveval) > 0)
             Rt = last(saved_values.saveval) 
             if (Rt < 1.0)
-                println("time = $(integrator.t); Rt = $Rt")
+                # println("time = $(integrator.t); Rt = $Rt")
             end
         end
     end
@@ -105,14 +104,6 @@ function daedalus(;
         cb_set = make_events(npi, fn_effect_on, fn_effect_off)
         cb_set = CallbackSet(cb_set, savingcb)
         cb_times = get_times(npi)
-    # else
-    #     coef = get_coef(npi)
-    #     fn_effect_on = make_param_changer("omega", .*, coef)
-    #     fn_effect_off = make_param_reset("omega")
-
-    #     cb_set = make_events(npi, fn_effect_on, fn_effect_off)
-    #     cb_times = []
-    # end
     else
         coef = get_coef(npi)
         fn_effect_on = make_param_changer("beta", .*, coef)
