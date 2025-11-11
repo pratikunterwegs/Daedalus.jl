@@ -14,6 +14,8 @@ It contains the contact matrices, contact weights, and various epidemiological p
 """
 mutable struct Params
     contacts::StaticArray
+    ngm::StaticArray
+    demography::StaticVector
     cw::StaticVector
     beta::Float64
     beta_now::Float64  # holds current beta

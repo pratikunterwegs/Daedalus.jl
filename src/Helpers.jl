@@ -1,11 +1,12 @@
 
 module Helpers
 
-export get_beta, get_ngm
+export get_beta, get_ngm, sum_by_age
 
 using ..Constants
 
 using LinearAlgebra
+using StaticArrays
 
 """
     get_beta(
@@ -88,7 +89,23 @@ function get_ngm(cm, r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is)
 
     ngm = f_mat * v_inv[:, 1:n_groups]
 
-    return ngm
+    return SMatrix{n_groups,n_groups}(ngm)
+end
+
+"""
+    sum_by_age(state, index)
+Sum the state array over economic groups into age groups for a given compartment index.
+"""
+function sum_by_age(state, index)::Vector{Float64}
+    # subset indices
+    state_ = @view state[:, index, :]
+    state_ = sum(state_, dims=2)
+
+    # sum working age and add to index
+    s_ = state_[1:N_AGE_GROUPS]
+    s_[i_WORKING_AGE] += sum(last(state_, N_ECON_GROUPS))
+
+    return s_
 end
 
 end
