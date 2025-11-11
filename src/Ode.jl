@@ -21,7 +21,6 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
     # rows represent age groups, epi compartments are columns
     size::Int = N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA
     i_Rt = size + i_rel_Rt
-    i_Rt_cont = i_Rt + 1
 
     U = @view u[1:size]
     U = reshape(U, (N_TOTAL_GROUPS, N_COMPARTMENTS, N_VACCINE_STRATA))
@@ -91,10 +90,8 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
     @. dD = p.omega_now .* H
 
     # change in Rt
-    prev_rt = u[i_Rt_cont]
     new_rt = p.beta * (sum(S) / sum(U)) / p.gamma_Is
     du[i_Rt] = new_rt
-    du[i_Rt_cont] = new_rt - prev_rt
 end
 
 end
