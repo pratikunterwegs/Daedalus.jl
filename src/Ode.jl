@@ -4,6 +4,9 @@ export daedalus_ode!
 
 using ..Constants
 using ..DaedalusStructs
+using ..Helpers
+
+using LinearAlgebra
 
 """
     daedalus_ode!(du, u, p, t)
@@ -20,8 +23,6 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
     # view the values of each compartment per age group
     # rows represent age groups, epi compartments are columns
     size::Int = N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA
-    i_Rt = size + i_rel_Rt
-
     U = @view u[1:size]
     U = reshape(U, (N_TOTAL_GROUPS, N_COMPARTMENTS, N_VACCINE_STRATA))
 
@@ -90,8 +91,10 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
     @. dD = p.omega_now .* H
 
     # change in Rt
-    new_rt = p.beta * (sum(S) / sum(U)) / p.gamma_Is
-    du[i_Rt] = new_rt
+    p_susc = sum_by_age(u, iS) ./ p.demography
+    ngm_susc = p.ngm .* p_susc
+    new_rt = maximum(eigen(ngm_susc).values)
+    last(du) = new_rt
 end
 
 end
