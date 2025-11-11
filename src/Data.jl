@@ -57,7 +57,7 @@ Get a dummy value of worker contacts within economic sectors.
 
 This data is synthetic and not generated from the R package {daedalus}.
 """
-function worker_contacts(workers=aus_workers())
+function worker_contacts(workers=aus_workers(), scaled=true)
     # in proportion to workforce and scaled by workforce
     # copied from daedalus
     x = [2.631914, 2.987097, 1.596491, 4.054598, 3.411043, 3.859485, 3.703986,
@@ -68,15 +68,22 @@ function worker_contacts(workers=aus_workers())
         4.790890, 6.218820, 4.587976, 4.946564, 4.982976, 8.793487, 5.908916,
         6.035379, 3.382336, 3.263660]
 
-    return SVector{N_ECON_GROUPS}(x ./ workers)
+    if scaled
+        x = x ./ workers
+    end
+
+    return SVector{N_ECON_GROUPS}(x)
 end
 
-function consumer_worker_contacts(demography=australia_demography())
+function consumer_worker_contacts(demography=australia_demography(), scaled=true)
     ccw = repeat([1.0], N_ECON_GROUPS * N_AGE_GROUPS)
     ccw = reshape(ccw, N_ECON_GROUPS, N_AGE_GROUPS)
 
     # colwise div by size of from groups
-    ccw *= Diagonal(1 ./ demography[i_AGE_GROUPS])
+    if scaled
+        ccw *= Diagonal(1 ./ demography[i_AGE_GROUPS])
+    end
+
 
     return SMatrix{N_ECON_GROUPS,N_AGE_GROUPS}(ccw)
 end
@@ -88,19 +95,24 @@ Get a contact matrix for all age-groups and economic sectors as a StaticArrays
     `SMatrix`. Operates on default data.
 """
 # Function to prepare 49x49 community contacts matrix
-function prepare_contacts(cm=australia_contacts())
+function prepare_contacts(cm=australia_contacts(), scaled=true)
     # community contacts, colwise div by size of from-group
     cm_x = ones(N_TOTAL_GROUPS, N_TOTAL_GROUPS) .* cm[i_WORKING_AGE, i_WORKING_AGE]
     cm_x[i_AGE_GROUPS, i_AGE_GROUPS] = cm
     cm_x[i_AGE_GROUPS, i_ECON_GROUPS] .= cm[:, i_WORKING_AGE]
     cm_x[i_ECON_GROUPS, i_AGE_GROUPS] .= reshape(cm[i_WORKING_AGE, :], 1, N_AGE_GROUPS)
-    cm_x *= Diagonal(1 ./ prepare_demog())
 
-    # add consumer worker contacts
-    cm_x[i_ECON_GROUPS, i_AGE_GROUPS] += consumer_worker_contacts()
+    if scaled
+        cm_x *= Diagonal(1 ./ prepare_demog())
+        # add consumer worker contacts
+        cm_x[i_ECON_GROUPS, i_AGE_GROUPS] += consumer_worker_contacts()
 
-    # # add workplace contacts
-    diag(cm_x)[i_ECON_GROUPS] += worker_contacts()
+        # # add workplace contacts
+        diag(cm_x)[i_ECON_GROUPS] += worker_contacts()
+    else
+        cm_x[i_ECON_GROUPS, i_AGE_GROUPS] += consumer_worker_contacts()
+        diag(cm_x)[i_ECON_GROUPS] += worker_contacts()
+    end
 
     return SMatrix{N_TOTAL_GROUPS,N_TOTAL_GROUPS}(cm_x)
 end
