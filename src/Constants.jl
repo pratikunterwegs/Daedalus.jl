@@ -5,7 +5,7 @@ module Constants
 export iS, iE, iIs, iIa, iH, iR, iD, N_COMPARTMENTS,
     i_AGE_GROUPS, i_WORKING_AGE, i_ECON_GROUPS,
     N_AGE_GROUPS, N_ECON_GROUPS, N_TOTAL_GROUPS, N_VACCINE_STRATA,
-    i_UNVAX_STRATUM, i_VAX_STRATUM, i_rel_Rt
+    i_UNVAX_STRATUM, i_VAX_STRATUM, i_rel_Rt, i_rel_Rt_cont
 
 const iS = 1
 const iE = 2
@@ -28,6 +28,7 @@ const i_UNVAX_STRATUM = 1
 const i_VAX_STRATUM = 2
 
 const i_rel_Rt = 1
+const i_rel_Rt_cont = i_rel_Rt + 1
 
 """
     get_indices(compartment::String)

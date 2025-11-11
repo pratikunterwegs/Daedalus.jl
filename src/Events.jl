@@ -121,6 +121,29 @@ make_events(x::ReactiveNpi, effect_on::Function, effect_off::Function) = begin
     return CallbackSet(cb_npi_on, cb_npi_off)
 end
 
-get_coef(x::Npi) = x.params.coef
+get_coef(x::Npi) = begin
+    return x.params.coef
+end
+
+"""
+    make_save_events(x::ReactiveNpi)
+
+Make a CallbackSet from a ReactiveNpi struct.
+"""
+make_save_events(x::ReactiveNpi, effect_on::Function, effect_off::Function) = begin
+    npi_idx_on = x.resparams.id_state_on
+    npi_idx_off = x.resparams.id_state_off
+    npi_value_on = x.resparams.value_state_on
+    npi_value_off = x.resparams.value_state_off
+
+    cb_npi_on = ContinuousCallback(
+        make_state_condition(npi_value_on, npi_idx_on, "up"), effect_on
+    )
+    cb_npi_off = ContinuousCallback(
+        make_state_condition(npi_value_off, npi_idx_off, "down"), effect_off
+    )
+
+    return CallbackSet(cb_npi_on, cb_npi_off)
+end
 
 end

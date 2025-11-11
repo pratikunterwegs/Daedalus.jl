@@ -21,7 +21,7 @@ plot(data, vars=(0, 50:99))
 plot(data, vars=(0, 343:392))
 ```
 
-## Intervention
+## Timed NPI
 
 ```@example timed_npi
 using Daedalus
@@ -36,57 +36,17 @@ npi = Daedalus.DaedalusStructs.TimedNpi(
     params=params, time_on=time_on, time_off=time_off
 )
 
-data = daedalus(beta=0.1, npi=npi)
+data = daedalus(beta=0.1, npi=npi, time_end=100.0);
 
 # plot output
-plot(data, vars=(0, 50:99))
+idx_exposed = Daedalus.Constants.get_indices("E")
+new_exposed = map((x) -> sum(x[idx_exposed]), data.sol.u)
+plot(data.sol.t, new_exposed, labels="exposed")
+vline!(time_on, linecolor="red", labels="npi on")
+vline!(time_off, linecolor="blue", labels="npi off")
 ```
 
-## State-dependent event
-
-This example shows a reactive event triggered by a state: mortality rate for all groups increases by 1.6x when hospital capacity is breached.
-
-```@example reactive_event
-using Daedalus
-using Plots
-
-# make reactive NPI
-idx = Daedalus.Constants.get_indices("H")
-hosp_capacity = 10000.0
-
-npi = Daedalus.DaedalusStructs.ReactiveNpi(
-    params=(coef=1.6,),
-    id_state_on=idx, id_state_off=idx,
-    value_state_on=hosp_capacity, value_state_off=hosp_capacity-100.0
-)
-
-Daedalus.Events.get_coef(npi)
-
-data = daedalus(beta = 0.05, npi=npi, time_end=200.0)
-data_default = daedalus(beta = 0.05, time_end=200.0)
-
-idx_deaths = Daedalus.Constants.get_indices("D")
-idx_hosp = Daedalus.Constants.get_indices("H")
-
-# plot new hosp over time
-new_hosp = map((x) -> sum(x[idx_hosp]), data.u)
-new_hosp_default = map((x) -> sum(x[idx_hosp]), data_default.u)
-
-plot(new_hosp_default)
-plot!(new_hosp, linecolor="orange")
-hline!([hosp_capacity], linestyle=:dash)
-```
-
-```@example reactive_event
-# plot new deaths over time
-new_deaths = diff(map((x) -> sum(x[idx_deaths]), data.u))
-new_deaths_default = diff(map((x) -> sum(x[idx_deaths]), data_default.u))
-
-plot(new_deaths_default)
-plot!(new_deaths, linecolor="orange")
-```
-
-## IPR-dependent NPI
+## State-dependent NPI
 
 ```@example ipr_event
 using Daedalus
@@ -107,16 +67,16 @@ npi = Daedalus.DaedalusStructs.ReactiveNpi(
 
 Daedalus.Events.get_coef(npi)
 
-data = daedalus(beta = 1.3 / 7.0, time_end=30.0, print=false)
-data_default = daedalus(beta = 0.05, time_end=200.0)
+data = daedalus(beta = 1.3 / 7.0, npi=npi, time_end=100.0);
+data_default = daedalus(beta = 0.05, time_end=100.0);
 
 idx_exposed = Daedalus.Constants.get_indices("E")
 
 # plot new hosp over time
-new_exposed = map((x) -> sum(x[idx_exposed]), data.u)
-new_exposed_default = map((x) -> sum(x[idx_exposed]), data_default.u)
+new_exposed = map((x) -> sum(x[idx_exposed]), data.sol.u)
+new_exposed_default = map((x) -> sum(x[idx_exposed]), data_default.sol.u)
 
-ipr = map((x) -> sum(x[(idx_off +1)]), data.u)
+ipr = map((x) -> sum(x[(idx_off +1)]), data.sol.u)
 plot(ipr)
 
 plot(new_exposed_default)
@@ -139,12 +99,12 @@ using Plots
 
 idx_off = 688 # manual
 
-data = daedalus(beta = 1.3 / 7.0, time_end=30.0, print=false);
+data = daedalus(beta = 1.3 / 7.0, time_end=30.0);
 
 plot(data.saves.t, data.saves.saveval)
 
 rt = map((x) -> sum(x[(idx_off)]), data.sol.u)
-plot!([0.0; data.saves.t], rt, color="red")
+plot!(rt, linecolor="red")
 
 # plot new hosp over time
 new_exposed = map((x) -> sum(x[idx_exposed]), data.u)

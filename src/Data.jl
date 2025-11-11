@@ -8,7 +8,7 @@ using LinearAlgebra
 using StaticArrays
 
 export australia_initial_state, australia_demography, prepare_contacts,
-    worker_contacts, prepare_demog
+    worker_contacts, prepare_demog, australia_contacts
 
 """
     australia_demography()
