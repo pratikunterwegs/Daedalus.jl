@@ -3,6 +3,7 @@ module Events
 
 using ..Constants
 using ..DaedalusStructs
+using DiffEqCallbacks: SavedValues
 using OrdinaryDiffEq
 
 export make_state_condition, make_time_condition, start_vax!,
@@ -19,8 +20,20 @@ Factory function for conditions. Makes a function that checks whether a root is
 """
 function make_state_condition(threshold, idx, crossing)::Function
     function fn_cond(u, t, integrator)
-        X = @view u[idx]
-        state_sum = sum(X)
+
+        state_sum = 0.0
+
+        if typeof(idx) == SavedValues
+            if length(idx.saveval) == 0
+                state_sum = 0.0
+            else
+                state_sum = last(idx.saveval)
+            end
+        elseif typeof(idx) == Int64 || typeof(idx) == UnitRange{Int64}
+            # if a vector of indices is passed
+            X = @view u[idx]
+            state_sum = sum(X)
+        end
 
         if crossing == "up"
             return state_sum - threshold
@@ -105,7 +118,8 @@ end
 
 Make a CallbackSet from a ReactiveNpi struct.
 """
-make_events(x::ReactiveNpi, effect_on::Function, effect_off::Function) = begin
+make_events(x::ReactiveNpi, effect_on::Function, effect_off::Function,
+    savevals::SavedValues) = begin
     npi_idx_on = x.resparams.id_state_on
     npi_idx_off = x.resparams.id_state_off
     npi_value_on = x.resparams.value_state_on
@@ -115,7 +129,7 @@ make_events(x::ReactiveNpi, effect_on::Function, effect_off::Function) = begin
         make_state_condition(npi_value_on, npi_idx_on, "up"), effect_on
     )
     cb_npi_off = ContinuousCallback(
-        make_state_condition(npi_value_off, npi_idx_off, "down"), effect_off
+        make_state_condition(npi_value_off, savevals, "down"), effect_off
     )
 
     return CallbackSet(cb_npi_on, cb_npi_off)
