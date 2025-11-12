@@ -3,7 +3,7 @@ module Events
 
 using ..Constants
 using ..DaedalusStructs
-using DifferentialEquations
+using OrdinaryDiffEq
 
 export make_state_condition, make_time_condition, start_vax!,
     make_events, get_times, make_param_changer, make_param_reset,
