@@ -31,6 +31,7 @@ mutable struct Params
     gamma_H::Vector{Float64}
     nu::Float64
     psi::Float64
+    size::Int
 end
 
 """

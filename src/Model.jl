@@ -9,6 +9,7 @@ using .Constants
 using .Ode
 using .Data
 using .Events
+using .Helpers
 using .DaedalusStructs
 
 """
@@ -39,20 +40,27 @@ function daedalus(;
     time_end::Float64=100.0,
     increment::Float64=1.0)
 
-    # scale contacts by demography; divide col-wise
-    # contacts = contacts ./ demography
+    # calculate beta
+    beta = get_beta(australia_contacts(), r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is)
 
-    # calculate R0 crudely
-    r0 = 1.0 / gamma_Is
-
+    # age varying parameters
     eta = [eta; repeat([eta[i_WORKING_AGE]], N_ECON_GROUPS)]
     omega = [omega; repeat([omega[i_WORKING_AGE]], N_ECON_GROUPS)]
     gamma_H = [gamma_H; repeat([gamma_H[i_WORKING_AGE]], N_ECON_GROUPS)]
 
+    # NGM
+    ngm = get_ngm(
+        australia_contacts(), r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
+    )
+    demog = SVector{N_AGE_GROUPS}(australia_demography())
+
+    size::Int = N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA
+
     # combined parameters into an array; this is not recommended but this cannot be a tuple
     # using a StaticArray for the `contacts` helps cut computation as this is assigned only once(?)
-    parameters = Params(contacts, cw, beta, beta, sigma, p_sigma, epsilon,
-        rho, eta, omega, omega, gamma_Ia, gamma_Is, gamma_H, nu, psi)
+    parameters = Params(contacts, ngm, demog, cw, beta, beta, sigma, p_sigma,
+        epsilon, rho, eta, omega, omega, gamma_Ia, gamma_Is, gamma_H, nu, psi,
+        size)
 
     # prepare the timespan and savepoints
     timespan = (0.0, time_end)
@@ -60,28 +68,28 @@ function daedalus(;
 
     # add Rt compartment at end
     initial_state = reshape(initial_state, length(initial_state))
-    initial_state = [initial_state; r0; r0]  # assume tinf = 7.0
+    initial_state = [initial_state; r0]  # assume tinf = 7.0
 
     # saving callback for Rt
     saved_values = SavedValues(Float64, Float64)
 
     idx_susceptible = Constants.get_indices("S")
-    size = N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA
 
+    # See implementation of saving derivatives in https://discourse.julialang.org/t/wrong-derivatives-saved-with-savingcallback/92471
     savingcb = SavingCallback(
-        (u, t, integrator) -> u[size + i_rel_Rt_cont],
+        (u, t, integrator) -> (_u = similar(u); get_du!(_u, integrator); return last(_u)),
         saved_values, saveat=savepoints)
 
     function affect!(integrator)
         # assumes saved_values in scope --- to be reconsidered
         if (length(saved_values.saveval) > 0)
-            Rt = last(saved_values.saveval) 
+            Rt = last(saved_values.saveval)
             if (Rt < 1.0)
                 # println("time = $(integrator.t); Rt = $Rt")
             end
         end
     end
-    
+
     pstcb = PresetTimeCallback(
         savepoints, affect!
     )
