@@ -22,11 +22,10 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
 
     # view the values of each compartment per age group
     # rows represent age groups, epi compartments are columns
-    size::Int = N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA
-    U = @view u[1:size]
+    U = @view u[1:p.size]
     U = reshape(U, (N_TOTAL_GROUPS, N_COMPARTMENTS, N_VACCINE_STRATA))
 
-    dU = @view du[1:size]
+    dU = @view du[1:p.size]
     dU = reshape(dU, (N_TOTAL_GROUPS, N_COMPARTMENTS, N_VACCINE_STRATA))
 
     # using views does not seem to affect performance greatly
@@ -91,10 +90,12 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
     @. dD = p.omega_now .* H
 
     # change in Rt
-    p_susc = sum_by_age(u, iS) ./ p.demography
+    demog_alive = p.demography .- sum_by_age(U, iD)
+    p_susc = sum_by_age(U, iS) ./ demog_alive
     ngm_susc = p.ngm .* p_susc
     new_rt = maximum(eigen(ngm_susc).values)
-    last(du) = new_rt
+
+    du[p.size+i_rel_Rt] = new_rt
 end
 
 end
