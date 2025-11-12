@@ -74,27 +74,11 @@ function daedalus(;
     # saving callback for Rt
     saved_values = SavedValues(Float64, Float64)
 
-    idx_susceptible = Constants.get_indices("S")
-
     # See implementation of saving derivatives in 
     # https://discourse.julialang.org/t/wrong-derivatives-saved-with-savingcallback/92471
     savingcb = SavingCallback(
         (u, t, integrator) -> (_u = similar(u); get_du!(_u, integrator); return last(_u)),
         saved_values, saveat=savepoints)
-
-    function affect!(integrator)
-        # assumes saved_values in scope --- to be reconsidered
-        if (length(saved_values.saveval) > 0)
-            Rt = last(saved_values.saveval)
-            if (Rt < 1.0)
-                # println("time = $(integrator.t); Rt = $Rt")
-            end
-        end
-    end
-
-    pstcb = PresetTimeCallback(
-        savepoints, affect!
-    )
 
     # define the ode problem
     ode_problem = ODEProblem(
@@ -103,8 +87,8 @@ function daedalus(;
 
     # check if NPI is passed and define a callback if so
     if (isnothing(npi))
-        cb_set = CallbackSet(savingcb, pstcb)
-        cb_times = []
+        cb_set = CallbackSet(savingcb)
+        cb_times = [] # empty as savingcb holds save time info
     elseif (typeof(npi) == Daedalus.DaedalusStructs.TimedNpi)
         coef = get_coef(npi)
 
@@ -113,13 +97,13 @@ function daedalus(;
 
         cb_set = make_events(npi, fn_effect_on, fn_effect_off)
         cb_set = CallbackSet(cb_set, savingcb)
-        cb_times = get_times(npi)
-    else
+        cb_times = get_times(npi) # only affects TimedNpi?
+    else  # a ReactiveNpi
         coef = get_coef(npi)
         fn_effect_on = make_param_changer("beta", .*, coef)
         fn_effect_off = make_param_reset("beta")
 
-        cb_set = make_events(npi, fn_effect_on, fn_effect_off)
+        cb_set = make_events(npi, fn_effect_on, fn_effect_off, saved_values)
         cb_set = CallbackSet(cb_set, savingcb)
         cb_times = []
     end
