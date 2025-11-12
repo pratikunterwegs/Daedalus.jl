@@ -1,8 +1,9 @@
 
 export daedalus
 
-using DifferentialEquations
-using LinearAlgebra
+using OrdinaryDiffEq  # consider even lighter deps
+using DiffEqCallbacks: SavingCallback, SavedValues, PresetTimeCallback
+using LinearAlgebra: eigen
 using StaticArrays
 
 using .Constants
@@ -68,14 +69,15 @@ function daedalus(;
 
     # add Rt compartment at end
     initial_state = reshape(initial_state, length(initial_state))
-    initial_state = [initial_state; r0]  # assume tinf = 7.0
+    initial_state = [initial_state; r0]
 
     # saving callback for Rt
     saved_values = SavedValues(Float64, Float64)
 
     idx_susceptible = Constants.get_indices("S")
 
-    # See implementation of saving derivatives in https://discourse.julialang.org/t/wrong-derivatives-saved-with-savingcallback/92471
+    # See implementation of saving derivatives in 
+    # https://discourse.julialang.org/t/wrong-derivatives-saved-with-savingcallback/92471
     savingcb = SavingCallback(
         (u, t, integrator) -> (_u = similar(u); get_du!(_u, integrator); return last(_u)),
         saved_values, saveat=savepoints)
