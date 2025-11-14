@@ -37,7 +37,7 @@ function daedalus(;
     gamma_H::Vector{Float64}=[0.034, 0.034, 0.034, 0.034],
     nu=0.0,
     psi::Float64=1.0 / 270.0,
-    npi::Union{TimedNpi,ReactiveNpi,Nothing}=nothing,
+    npi::Union{Npi,Nothing}=nothing,
     time_end::Float64=100.0,
     increment::Float64=1.0)
 
@@ -71,15 +71,6 @@ function daedalus(;
     initial_state = reshape(initial_state, length(initial_state))
     initial_state = [initial_state; r0]
 
-    # saving callback for Rt
-    saved_values = SavedValues(Float64, Float64)
-
-    # See implementation of saving derivatives in 
-    # https://discourse.julialang.org/t/wrong-derivatives-saved-with-savingcallback/92471
-    savingcb = SavingCallback(
-        (u, t, integrator) -> (_u = similar(u); get_du!(_u, integrator); return last(_u)),
-        saved_values, saveat=savepoints)
-
     # define the ode problem
     ode_problem = ODEProblem(
         daedalus_ode!, initial_state, timespan, parameters
@@ -87,32 +78,22 @@ function daedalus(;
 
     # check if NPI is passed and define a callback if so
     if (isnothing(npi))
-        cb_set = CallbackSet(savingcb)
-        cb_times = [] # empty as savingcb holds save time info
-    elseif (typeof(npi) == Daedalus.DaedalusStructs.TimedNpi)
-        coef = get_coef(npi)
+        rt_logger = make_rt_logger(savepoints)
+        cb_set = CallbackSet(rt_logger)
+    else  # Npi
+        rt_logger = make_rt_logger(savepoints)
 
-        fn_effect_on = make_param_changer("beta", *, coef)
-        fn_effect_off = make_param_reset("beta")
-
-        cb_set = make_events(npi, fn_effect_on, fn_effect_off)
-        cb_set = CallbackSet(cb_set, savingcb)
-        cb_times = get_times(npi) # only affects TimedNpi?
-    else  # a ReactiveNpi
         coef = get_coef(npi)
         fn_effect_on = make_param_changer("beta", .*, coef)
         fn_effect_off = make_param_reset("beta")
 
-        cb_set = make_events(npi, fn_effect_on, fn_effect_off, saved_values)
-        cb_set = CallbackSet(cb_set, savingcb)
-        cb_times = []
+        save_events = make_save_events(npi, savepoints)
+        events = make_events(npi, fn_effect_on, fn_effect_off, savepoints)
+        cb_set = CallbackSet(events, save_events, rt_logger)
     end
 
     # get the solution, ensuring that tstops includes t_vax
-    ode_solution = solve(ode_problem, saveat=savepoints,
-        callback=cb_set,
-        tstops=cb_times
-    )
+    ode_solution = solve(ode_problem, callback=cb_set, saveat=savepoints)
 
-    return (sol=ode_solution, saves=saved_values)
+    return (sol=ode_solution, saves=isnothing(npi) ? nothing : npi.saved_values)
 end
