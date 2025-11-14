@@ -88,14 +88,6 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
 
     # change in dead
     @. dD = p.omega_now .* H
-
-    # change in Rt
-    demog_alive = p.demography .- sum_by_age(U, iD)
-    p_susc = sum_by_age(U, iS) ./ demog_alive
-    ngm_susc = p.ngm .* p_susc
-    new_rt = maximum(eigen(ngm_susc).values)
-
-    du[p.size+i_rel_Rt] = new_rt
 end
 
 end
