@@ -42,7 +42,6 @@ A function factory to generate effect functions.
 """
 function make_param_changer(param_name, func, coef)
     function effect!(integrator)
-        println("time = ", integrator.t, "; changing param ", param_name, "!")
         new_value = func(getproperty(integrator.p, Symbol(param_name)), coef)
         setproperty!(integrator.p, Symbol(param_name * "_now"), new_value)
     end
@@ -50,7 +49,6 @@ end
 
 function make_param_reset(param_name)
     function effect!(integrator)
-        println("time = ", integrator.t, "; resetting param ", "!")
         original_value = getproperty(integrator.p, Symbol(param_name))
         setproperty!(integrator.p, Symbol(param_name * "_now"), original_value)
     end
@@ -71,14 +69,17 @@ make_events(x::Npi, effect_on::Function, effect_off::Function, savepoints) = beg
     # pass appropriate fn `>` or `<` for comparison
     # checking against U can be replaced by checking x.saved_values
     function affect_on!(integrator)
-        _u = similar(integrator.u)
-        get_du!(_u, integrator)
-        growing = any(_u[idx_on] .> 0.0)
+        if length(x.saved_values.saveval) < 2 # need two values for slope
+            return nothing
+        end
 
-        U = @view integrator.u[idx_on]
-        if sum(U) > value_on && growing && !x.ison # only supporting gt for now
-            effect_on(integrator)
+        u = x.saved_values.saveval[end][2] # 1st value is flag
+        _u = x.saved_values.saveval[end-1][2]
+        growing = u > _u
+
+        if u > value_on && growing && !x.ison # only supporting gt for now
             x.ison = true
+            effect_on(integrator)
         else
             nothing
         end
@@ -87,10 +88,14 @@ make_events(x::Npi, effect_on::Function, effect_off::Function, savepoints) = beg
     cb_on = PresetTimeCallback(savepoints, affect_on!)
 
     function affect_off!(integrator)
-        U = @view integrator.u[idx_off]
-        if sum(U) < value_off && x.ison # only supporting lt for now
-            effect_off(integrator)
+        if length(x.saved_values.saveval) == 0
+            return nothing
+        end
+
+        u = x.saved_values.saveval[end][3]
+        if u < value_off && x.ison # only supporting lt for now
             x.ison = false
+            effect_off(integrator)
         else
             nothing
         end
@@ -123,7 +128,7 @@ make_save_events(x::Npi, savepoints) = begin
             idx_off = DaedalusStructs.get_indices(x.params.comp_off)
             sum_off = sum(u[idx_off])
 
-            return (sum_on, sum_off)
+            return (x.ison, sum_on, sum_off)
         end,
         x.saved_values, saveat=savepoints
     )
@@ -142,6 +147,8 @@ make_rt_logger(savepoints) = begin
     function affect!(integrator)
 
         U = @view integrator.u[1:integrator.p.size]
+        U = reshape(U, (N_TOTAL_GROUPS, N_COMPARTMENTS, N_VACCINE_STRATA))
+
         p_susc = sum_by_age(U, iS) ./ integrator.p.demography
         ngm_susc = integrator.p.ngm .* p_susc
         rt = maximum(eigen(ngm_susc).values)
