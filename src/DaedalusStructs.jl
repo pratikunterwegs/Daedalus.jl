@@ -101,7 +101,7 @@ mutable struct Npi <: Event
 
     function Npi(value_on::Float64, coefs::NamedTuple)
         params = NpiData(value_on)
-        sv = SavedValues(Float64, Tuple{Float64,Float64}) # time and two data
+        sv = SavedValues(Float64, Tuple{Bool,Float64,Float64}) # time and two data
         return new(params, coefs, sv, false)
     end
 end
