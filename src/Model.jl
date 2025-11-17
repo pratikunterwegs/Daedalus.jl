@@ -23,8 +23,6 @@ function daedalus(;
     initial_state=australia_initial_state(australia_demography()),
     contacts=prepare_contacts(),
     cw=worker_contacts(),
-    demography=prepare_demog(),
-    hospital_capacity::Float64=1000.0,
     r0=1.3, # manual beta assumes R0 = 1.3, infectious period = 7 days
     sigma=0.217,
     p_sigma=0.867,
@@ -95,5 +93,6 @@ function daedalus(;
     # get the solution, ensuring that tstops includes t_vax
     ode_solution = solve(ode_problem, callback=cb_set, saveat=savepoints)
 
-    return (sol=ode_solution, saves=isnothing(npi) ? nothing : npi.saved_values)
+    return (sol=ode_solution, saves=isnothing(npi) ? nothing : npi.saved_values,
+        npi=isnothing(npi) ? nothing : npi)
 end
