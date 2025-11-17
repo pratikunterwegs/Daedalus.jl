@@ -18,7 +18,8 @@ makedocs(;
         "Home" => "index.md",
         "Index" => "pkg_index.md",
         "Function Reference" => "reference.md",
-        "Running daedalus" => "daedalus.md",
+        "Reactive NPIs" => "npis.md",
+        "Implementing reactive events" => "musings.md",
         "Benchmarking" => "benchmarking.md"
     ],
 )
