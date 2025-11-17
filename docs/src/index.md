@@ -16,3 +16,34 @@ This documentation section is intended as a learning experience (for me) in writ
 [![SciML Code Style](https://img.shields.io/static/v1?label=code%20style&message=SciML&color=9558b2&labelColor=389826)](https://github.com/SciML/SciMLStyle)
 
 _Daedalus.jl_ is a Julia package that aims to mirror the [R package {daedalus}](https://github.com/jameel-institute/daedalus).
+
+This section shows how to run the Daedalus Julia model.
+Functionality compared to the R package is limited.
+
+```@example basic_daedalus
+using Daedalus
+using Plots
+
+# pump up r0 to get peak within 50 days
+data = daedalus(r0=5.0);
+
+# plot exposed group
+iExposed = Daedalus.Constants.get_indices("E")
+iHosp = Daedalus.Constants.get_indices("H")
+exposed = [sum(x[iExposed]) for x in data.sol.u]
+hosp = [sum(x[iHosp]) for x in data.sol.u]
+
+# plot the output to see lag in hospitalisations
+plot(data.sol.t, exposed, label="exposed")
+plot!(data.sol.t, hosp, label="hosp")
+xlabel!("Time (days)")
+ylabel!("# individuals")
+```
+
+```@example basic_daedalus
+# plot recorded Rt
+iRt = Daedalus.Constants.get_indices("Rt")
+plot(data.sol.t, [x[iRt] for x in data.sol.u], label="Rt")
+xlabel!("Time (days)")
+ylabel!("Rt")
+```
