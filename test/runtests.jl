@@ -1,12 +1,13 @@
 using Daedalus
 using LinearAlgebra
+using Random
 using Test
 
 @testset "Daedalus.jl" begin
     # Write your tests here.
     @testset "DAEDALUS model" begin
         try
-            daedalus(r0=5.0, time_end=100.0)
+            daedalus(r0 = 5.0, time_end = 100.0)
             @test true
         catch e
             @test false
@@ -37,4 +38,7 @@ using Test
 
         @test lambda ≈ r0
     end
+
+    # Include eigenvalue tests
+    include("test_eigenvalue.jl")
 end
