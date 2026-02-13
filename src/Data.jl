@@ -57,7 +57,7 @@ Get a dummy value of worker contacts within economic sectors.
 
 This data is synthetic and not generated from the R package {daedalus}.
 """
-function worker_contacts(workers=aus_workers(), scaled=true)
+function worker_contacts(workers=aus_workers(); scaled=true)
     # in proportion to workforce and scaled by workforce
     # copied from daedalus
     x = [2.631914, 2.987097, 1.596491, 4.054598, 3.411043, 3.859485, 3.703986,
@@ -75,7 +75,7 @@ function worker_contacts(workers=aus_workers(), scaled=true)
     return SVector{N_ECON_GROUPS}(x)
 end
 
-function consumer_worker_contacts(demography=australia_demography(), scaled=true)
+function consumer_worker_contacts(demography=australia_demography(); scaled=true)
     ccw = repeat([1.0], N_ECON_GROUPS * N_AGE_GROUPS)
     ccw = reshape(ccw, N_ECON_GROUPS, N_AGE_GROUPS)
 
@@ -95,23 +95,20 @@ Get a contact matrix for all age-groups and economic sectors as a StaticArrays
     `SMatrix`. Operates on default data.
 """
 # Function to prepare 49x49 community contacts matrix
-function prepare_contacts(cm=australia_contacts(), scaled=true)
+function prepare_contacts(cm=australia_contacts(); scaled=true)
     # community contacts, colwise div by size of from-group
     cm_x = ones(N_TOTAL_GROUPS, N_TOTAL_GROUPS) .* cm[i_WORKING_AGE, i_WORKING_AGE]
     cm_x[i_AGE_GROUPS, i_AGE_GROUPS] = cm
     cm_x[i_AGE_GROUPS, i_ECON_GROUPS] .= cm[:, i_WORKING_AGE]
     cm_x[i_ECON_GROUPS, i_AGE_GROUPS] .= reshape(cm[i_WORKING_AGE, :], 1, N_AGE_GROUPS)
 
+    cm_x[i_ECON_GROUPS, i_AGE_GROUPS] +=
+        consumer_worker_contacts(scaled=false)
+    cm_x[i_ECON_GROUPS, i_ECON_GROUPS] +=
+        Diagonal(worker_contacts(scaled=false))
+
     if scaled
         cm_x *= Diagonal(1 ./ prepare_demog())
-        # add consumer worker contacts
-        cm_x[i_ECON_GROUPS, i_AGE_GROUPS] += consumer_worker_contacts()
-
-        # # add workplace contacts
-        diag(cm_x)[i_ECON_GROUPS] += worker_contacts()
-    else
-        cm_x[i_ECON_GROUPS, i_AGE_GROUPS] += consumer_worker_contacts()
-        diag(cm_x)[i_ECON_GROUPS] += worker_contacts()
     end
 
     return SMatrix{N_TOTAL_GROUPS,N_TOTAL_GROUPS}(cm_x)
@@ -125,10 +122,7 @@ Get a population vector for all age-groups and economic sectors for the force of
 """
 # Function to prepare 49 element demography vector for I/N in FOI calculation
 function prepare_demog(demog=australia_demography(), workers=aus_workers())
-    demog_x = ones(N_TOTAL_GROUPS) * demog[i_WORKING_AGE]
-    demog_x[i_AGE_GROUPS] = demog
-
-    return demog_x
+    return [demog; workers]
 end
 
 """
