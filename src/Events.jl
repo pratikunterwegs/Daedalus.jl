@@ -6,12 +6,12 @@ using ..DaedalusStructs
 using ..Helpers
 
 using DiffEqCallbacks: SavedValues, SavingCallback, PresetTimeCallback
-using LinearAlgebra: eigen
+using LinearAlgebra: eigen, norm
 using OrdinaryDiffEq
 
 export make_state_condition,
-    make_events, make_param_changer, make_param_reset,
-    get_coef, make_save_events, make_rt_logger
+       make_events, make_param_changer, make_param_reset,
+       get_coef, make_save_events, make_rt_logger
 
 """
     make_cond(threshold)::Function
@@ -23,7 +23,6 @@ Factory function for conditions. Makes a function that checks whether a root is
 """
 function make_state_condition(threshold, idx, comparison::Function)::Function
     function fn_cond(u, t, integrator)
-
         state_sum = 0.0
 
         X = @view u[idx]
@@ -74,7 +73,7 @@ make_events(x::Npi, effect_on::Function, effect_off::Function, savepoints) = beg
         end
 
         u = x.saved_values.saveval[end][2] # 1st value is flag
-        _u = x.saved_values.saveval[end-1][2]
+        _u = x.saved_values.saveval[end - 1][2]
         growing = u > _u
 
         if u > value_on && growing && !x.ison # only supporting gt for now
@@ -130,7 +129,7 @@ make_save_events(x::Npi, savepoints) = begin
 
             return (x.ison, sum_on, sum_off)
         end,
-        x.saved_values, saveat=savepoints
+        x.saved_values, saveat = savepoints
     )
 
     return savingcb
@@ -144,16 +143,25 @@ Make a PresetTimeCallback to update Rt.
 make_rt_logger(savepoints) = begin
     # make a PresetTimeCallback that updates u at integerish times
     iRt = Constants.get_indices("Rt")
-    function affect!(integrator)
 
-        U = @view integrator.u[1:end-1] # hardcoded
+    # Preallocate initial vector for power iteration warm starts
+    # Using warm starts can improve convergence speed between timesteps
+    v_prev = randn(N_TOTAL_GROUPS)
+    v_prev = v_prev / norm(v_prev)
+
+    function affect!(integrator)
+        U = @view integrator.u[1:(end - 1)] # hardcoded
         U = reshape(U, (N_TOTAL_GROUPS, N_COMPARTMENTS, N_VACCINE_STRATA))
 
         S = @view U[:, iS, :]
 
-        p_susc = sum(S, dims=2) ./ integrator.p.demography
+        p_susc = sum(S, dims = 2) ./ integrator.p.demography
         ngm_susc = integrator.p.ngm .* p_susc
-        rt = maximum(real(eigen(ngm_susc).values))
+
+        # Use power iteration to compute only the dominant eigenvalue
+        # This is significantly faster than computing all eigenvalues
+        rt = Helpers.dominant_eigenvalue(
+            ngm_susc, v_init = v_prev, max_iter = 50, tol = 1e-5)
 
         integrator.u[iRt] = rt
     end
