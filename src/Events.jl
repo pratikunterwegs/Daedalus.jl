@@ -146,12 +146,14 @@ make_rt_logger(savepoints) = begin
     iRt = Constants.get_indices("Rt")
     function affect!(integrator)
 
-        U = @view integrator.u[1:integrator.p.size]
+        U = @view integrator.u[1:end-1] # hardcoded
         U = reshape(U, (N_TOTAL_GROUPS, N_COMPARTMENTS, N_VACCINE_STRATA))
 
-        p_susc = sum_by_age(U, iS) ./ integrator.p.demography
+        S = @view U[:, iS, :]
+
+        p_susc = sum(S, dims=2) ./ integrator.p.demography
         ngm_susc = integrator.p.ngm .* p_susc
-        rt = maximum(eigen(ngm_susc).values)
+        rt = maximum(real(eigen(ngm_susc).values))
 
         integrator.u[iRt] = rt
     end

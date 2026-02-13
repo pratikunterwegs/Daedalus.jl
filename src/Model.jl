@@ -36,11 +36,15 @@ function daedalus(;
     nu=0.0,
     psi::Float64=1.0 / 270.0,
     npi::Union{Npi,Nothing}=nothing,
+    log_rt=true,
     time_end::Float64=100.0,
     increment::Float64=1.0)
 
     # calculate beta
-    beta = get_beta(australia_contacts(), r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is)
+    beta = get_beta(
+        prepare_contacts(scaled=false),
+        r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
+    )
 
     # age varying parameters
     eta = [eta; repeat([eta[i_WORKING_AGE]], N_ECON_GROUPS)]
@@ -49,9 +53,10 @@ function daedalus(;
 
     # NGM
     ngm = get_ngm(
-        australia_contacts(), r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
+        prepare_contacts(scaled=false),
+        r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
     )
-    demog = SVector{N_AGE_GROUPS}(australia_demography())
+    demog = SVector{N_TOTAL_GROUPS}(prepare_demog())
 
     size::Int = N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA
 
@@ -76,18 +81,26 @@ function daedalus(;
 
     # check if NPI is passed and define a callback if so
     if (isnothing(npi))
-        rt_logger = make_rt_logger(savepoints)
-        cb_set = CallbackSet(rt_logger)
+        cb_set = CallbackSet()
+        if log_rt
+            rt_logger = make_rt_logger(savepoints)
+            cb_set = CallbackSet(rt_logger)
+        end
     else  # Npi
-        rt_logger = make_rt_logger(savepoints)
-
         coef = get_coef(npi)
         fn_effect_on = make_param_changer("beta", .*, coef)
         fn_effect_off = make_param_reset("beta")
 
         save_events = make_save_events(npi, savepoints)
         events = make_events(npi, fn_effect_on, fn_effect_off, savepoints)
-        cb_set = CallbackSet(events, save_events, rt_logger)
+
+        if log_rt
+            rt_logger = make_rt_logger(savepoints)
+            cb_set = CallbackSet(events, save_events, rt_logger)
+        else
+            cb_set = CallbackSet(events, save_events)
+        end
+
     end
 
     # get the solution, ensuring that tstops includes t_vax

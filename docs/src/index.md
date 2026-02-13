@@ -25,7 +25,7 @@ using Daedalus
 using Plots
 
 # pump up r0 to get peak within 50 days
-data = daedalus(r0=5.0);
+data = daedalus(r0=5.0, time_end=600.0);
 
 # plot exposed group
 iExposed = Daedalus.Constants.get_indices("E")

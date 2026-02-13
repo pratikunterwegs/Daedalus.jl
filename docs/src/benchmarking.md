@@ -27,7 +27,7 @@ using BenchmarkTools
 ## Reactive events
 
 ```@example benchmarking_reactive_event
-# benchmark for an RTM-exercise run of 100 days with two timed events
+# benchmark for an RTM-exercise run of 100 days
 using Daedalus
 using BenchmarkTools
 
@@ -39,4 +39,16 @@ npi = Daedalus.DaedalusStructs.Npi(20000.0, (coef=0.7,));
 ```@example benchmarking_reactive_event
 # shorter duration
 @benchmark daedalus(r0=5.0, npi=npi, time_end=100.0)
+```
+
+## Effect of logging $R_t$
+
+Logging $R_t$ in each timestep slows the simulation down by _a lot_.
+
+```@example benchmarking_rt_logging
+using Daedalus
+using BenchmarkTools
+
+# turn off Rt logging and compare with benchmark above
+@benchmark daedalus(log_rt=false, time_end=600.0)
 ```
