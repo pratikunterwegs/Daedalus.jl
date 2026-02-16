@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for both increasing and decreasing threshold detection in event callbacks
 - Worker contact modeling with static vector optimization
 - Documentation with basic usage examples and plots
+- Time dependent NPIs as a struct `TimedNpi`
 
 ### Changed
 - Simplified NPI handling and data structures
