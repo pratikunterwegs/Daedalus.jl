@@ -194,7 +194,7 @@ struct TimedNpi <: Event
 
         # Validate non-overlapping intervals
         for i in 1:(n_phases - 1)
-            if end_times[i] > start_times[i + 1]
+            if end_times[i] >= start_times[i + 1]
                 throw(ArgumentError(
                     "Overlapping intervals detected: phase $i ends at " *
                     "$(end_times[i]) but phase $(i+1) starts at " *

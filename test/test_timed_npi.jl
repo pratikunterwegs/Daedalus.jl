@@ -1,5 +1,6 @@
 using Daedalus
 using Test
+using OrdinaryDiffEq
 using DiffEqCallbacks
 
 @testset "TimedNpi construction and validation" begin
@@ -65,10 +66,6 @@ using DiffEqCallbacks
     @testset "Validation: end_time < start_time" begin
         @test_throws ArgumentError Daedalus.DaedalusStructs.TimedNpi(
             [20.0], [10.0], [0.5]
-        )
-
-        @test_throws ArgumentError Daedalus.DaedalusStructs.TimedNpi(
-            [10.0, 30.0], [25.0, 35.0], [0.5, 0.3]  # second phase: 30 > 35 is valid
         )
 
         @test_throws ArgumentError Daedalus.DaedalusStructs.TimedNpi(
@@ -196,7 +193,7 @@ end
         npi = Daedalus.DaedalusStructs.TimedNpi(10.0, 20.0, 0.5)
         callbacks = Daedalus.Events.make_timed_npi_callbacks(npi)
 
-        @test isa(callbacks, CallbackSet)
+        @test isa(callbacks, DiffEqCallbacks.CallbackSet)
         # Should have 2 callbacks: one for activation, one for deactivation
         @test length(callbacks.discrete_callbacks) == 2
     end
@@ -209,7 +206,7 @@ end
         )
         callbacks = Daedalus.Events.make_timed_npi_callbacks(npi)
 
-        @test isa(callbacks, CallbackSet)
+        @test isa(callbacks, DiffEqCallbacks.CallbackSet)
         # Should have 6 callbacks: 2 per phase (on/off)
         @test length(callbacks.discrete_callbacks) == 6
     end
@@ -240,7 +237,7 @@ end
             log_rt = true
         )
 
-        @test result.sol.retcode == :Success
+        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
         @test result.npi === npi
         @test isnothing(result.saves)  # TimedNpi has no saved values
     end
@@ -261,7 +258,7 @@ end
             log_rt = false
         )
 
-        @test result.sol.retcode == :Success
+        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
         @test result.npi === npi
         @test isnothing(result.saves)
     end
@@ -276,7 +273,7 @@ end
             log_rt = false
         )
 
-        @test result.sol.retcode == :Success
+        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
     end
 
     @testset "Model output structure is correct" begin
@@ -306,7 +303,7 @@ end
         )
 
         # Should have savepoints at each day from 0 to 50
-        @test length(result.sol.t) == 51
+        @test length(unique(result.sol.t)) == 51
         @test result.sol.t[1] == 0.0
         @test result.sol.t[end] == 50.0
     end
@@ -319,7 +316,7 @@ end
             time_end = 50.0,
             npi = npi_block
         )
-        @test result_block.sol.retcode == :Success
+        @test result_block.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
 
         # No intervention effect (coef = 1)
         npi_none = Daedalus.DaedalusStructs.TimedNpi(10.0, 30.0, 1.0)
@@ -328,7 +325,7 @@ end
             time_end = 50.0,
             npi = npi_none
         )
-        @test result_none.sol.retcode == :Success
+        @test result_none.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
     end
 
     @testset "NPI at simulation boundaries" begin
@@ -339,7 +336,7 @@ end
             time_end = 40.0,
             npi = npi_start
         )
-        @test result_start.sol.retcode == :Success
+        @test result_start.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
 
         # NPI ending at simulation end
         npi_end = Daedalus.DaedalusStructs.TimedNpi(20.0, 50.0, 0.5)
@@ -348,7 +345,7 @@ end
             time_end = 50.0,
             npi = npi_end
         )
-        @test result_end.sol.retcode == :Success
+        @test result_end.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
 
         # NPI covering entire simulation
         npi_full = Daedalus.DaedalusStructs.TimedNpi(0.0, 50.0, 0.5)
@@ -357,7 +354,7 @@ end
             time_end = 50.0,
             npi = npi_full
         )
-        @test result_full.sol.retcode == :Success
+        @test result_full.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
     end
 end
 
@@ -382,11 +379,11 @@ end
         )
 
         # Both should complete successfully
-        @test result_none.sol.retcode == :Success
-        @test result_npi.sol.retcode == :Success
+        @test result_none.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
+        @test result_npi.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
 
         # Should have same number of time points
-        @test length(result_none.sol.t) == length(result_npi.sol.t)
+        @test length(unique(result_none.sol.t)) == length(unique(result_npi.sol.t))
 
         # Intervention should generally reduce epidemic size
         # (not guaranteed for all parameter combinations, but should be true here)
@@ -409,7 +406,7 @@ end
             npi = npi
         )
 
-        @test result.sol.retcode == :Success
+        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
         @test result.npi === npi
         @test !isnothing(result.saves)  # Reactive NPI has saved values
     end
@@ -421,7 +418,7 @@ end
             npi = nothing
         )
 
-        @test result.sol.retcode == :Success
+        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
         @test isnothing(result.npi)
         @test isnothing(result.saves)
     end
@@ -437,7 +434,7 @@ end
             increment = 0.1,
             npi = npi
         )
-        @test result.sol.retcode == :Success
+        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
     end
 
     @testset "Very long intervention duration" begin
@@ -448,7 +445,7 @@ end
             time_end = 250.0,
             npi = npi
         )
-        @test result.sol.retcode == :Success
+        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
     end
 
     @testset "Many phases" begin
@@ -465,7 +462,7 @@ end
             time_end = 120.0,
             npi = npi
         )
-        @test result.sol.retcode == :Success
+        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
         @test Daedalus.DaedalusStructs.n_phases(npi) == 10
     end
 
@@ -482,7 +479,7 @@ end
             time_end = 100.0,
             npi = npi
         )
-        @test result.sol.retcode == :Success
+        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
     end
 
     @testset "Very high R0 with strong intervention" begin
@@ -493,7 +490,7 @@ end
             time_end = 80.0,
             npi = npi
         )
-        @test result.sol.retcode == :Success
+        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
     end
 
     @testset "Late-starting intervention" begin
@@ -504,6 +501,6 @@ end
             time_end = 200.0,
             npi = npi
         )
-        @test result.sol.retcode == :Success
+        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
     end
 end

@@ -54,18 +54,21 @@ using Daedalus
 using Plots
 
 # define a timed npi giving the start times, end times, and beta scaling
-timed_npi = TimedNpi(
-    [10.0, 30.0, 60.0],
-    [25.0, 55.0, 90.0],
-    [0.7, 0.3, 0.5],
+timed_npi = Daedalus.DaedalusStructs.TimedNpi(
+    [60.0, 180.0, 300.0],
+    [120.0, 200.0, 365.0],
+    [0.3, 0.7, 0.5],
     "three_phase_lockdown"
 )
 
-data = daedalus(npi=timed_npi);
+data = daedalus(r0=3.0, npi=timed_npi, time_end=600.0);
 
 # get exposed
-iexpo = Daedalus.Constants.get_indices("E")
-expo = [sum(x[iexpo]) for x in data.sol(0:100)]
-expo_default = [sum(x[iexpo]) for x in data_default.sol(0:100)]
+iExpo = Daedalus.Constants.get_indices("E")
+exposed = [sum(x[iExpo]) for x in data.sol(0:600)]
+times = unique(data.sol.t)
 
+plot(times, exposed, label="Incidence w/ NPI")
+xlabel!("Time (days)")
+ylabel!("Incidence")
 ```
