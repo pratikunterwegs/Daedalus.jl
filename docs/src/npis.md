@@ -43,3 +43,29 @@ plot!(times, rt_default, label="Rt w/o NPI")
 xlabel!("Time (days)")
 ylabel!("Rt")
 ```
+
+## Timed NPIs
+
+Timed NPIs are responsive only to time and not state.
+These were translated from the implementation in the R package _daedalus_ using Claude Sonnet 4.5 as a way of trying out Claude.
+
+```@example timed_npi
+using Daedalus
+using Plots
+
+# define a timed npi giving the start times, end times, and beta scaling
+timed_npi = TimedNpi(
+    [10.0, 30.0, 60.0],
+    [25.0, 55.0, 90.0],
+    [0.7, 0.3, 0.5],
+    "three_phase_lockdown"
+)
+
+data = daedalus(npi=timed_npi);
+
+# get exposed
+iexpo = Daedalus.Constants.get_indices("E")
+expo = [sum(x[iexpo]) for x in data.sol(0:100)]
+expo_default = [sum(x[iexpo]) for x in data_default.sol(0:100)]
+
+```

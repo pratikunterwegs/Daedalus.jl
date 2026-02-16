@@ -18,6 +18,45 @@ using .DaedalusStructs
 
 Model the progression of a daedalus epidemic with multiple optional vaccination
 strata.
+
+# Arguments
+- `npi`: Non-pharmaceutical intervention. Can be:
+  - `Npi`: Reactive NPI that responds to epidemic state (hospitalizations, Rt)
+  - `TimedNpi`: Time-limited NPI with predefined start/end times
+  - `nothing`: No intervention (default)
+
+# Examples
+
+## No intervention
+```julia
+result = daedalus(r0=2.5, time_end=200.0)
+```
+
+## Single-phase time-limited intervention
+```julia
+# 30% transmission reduction from day 15 to day 45
+npi = TimedNpi(15.0, 45.0, 0.7, "moderate_lockdown")
+result = daedalus(r0=2.5, time_end=200.0, npi=npi)
+```
+
+## Multi-phase time-limited intervention
+```julia
+# Three phases: moderate → strict → relaxed
+npi = TimedNpi(
+    [10.0, 30.0, 60.0],  # start times
+    [25.0, 55.0, 90.0],  # end times
+    [0.7, 0.3, 0.5],     # coefficients
+    "three_phase_strategy"
+)
+result = daedalus(r0=2.5, time_end=200.0, npi=npi)
+```
+
+## Reactive (state-dependent) intervention
+```julia
+# Triggers when hospitalizations reach threshold, deactivates when Rt < 1
+npi = Npi(5000.0, (coef=0.4,))
+result = daedalus(r0=2.5, time_end=200.0, npi=npi)
+```
 """
 function daedalus(;
     initial_state=australia_initial_state(australia_demography()),
@@ -35,7 +74,7 @@ function daedalus(;
     gamma_H::Vector{Float64}=[0.034, 0.034, 0.034, 0.034],
     nu=0.0,
     psi::Float64=1.0 / 270.0,
-    npi::Union{Npi,Nothing}=nothing,
+    npi::Union{Npi,TimedNpi,Nothing}=nothing,
     log_rt=true,
     time_end::Float64=100.0,
     increment::Float64=1.0)
@@ -79,14 +118,26 @@ function daedalus(;
         daedalus_ode!, initial_state, timespan, parameters
     )
 
-    # check if NPI is passed and define a callback if so
-    if (isnothing(npi))
+    # check if NPI is passed and define callbacks accordingly
+    if isnothing(npi)
+        # No intervention
         cb_set = CallbackSet()
         if log_rt
             rt_logger = make_rt_logger(savepoints)
             cb_set = CallbackSet(rt_logger)
         end
-    else  # Npi
+    elseif isa(npi, TimedNpi)
+        # Time-limited NPI - purely time-based triggers
+        timed_callbacks = make_timed_npi_callbacks(npi)
+
+        if log_rt
+            rt_logger = make_rt_logger(savepoints)
+            cb_set = CallbackSet(timed_callbacks, rt_logger)
+        else
+            cb_set = timed_callbacks
+        end
+    elseif isa(npi, Npi)
+        # Reactive NPI - state-dependent triggers
         coef = get_coef(npi)
         fn_effect_on = make_param_changer("beta", .*, coef)
         fn_effect_off = make_param_reset("beta")
@@ -100,12 +151,19 @@ function daedalus(;
         else
             cb_set = CallbackSet(events, save_events)
         end
-
     end
 
     # get the solution, ensuring that tstops includes t_vax
     ode_solution = solve(ode_problem, callback=cb_set, saveat=savepoints)
 
-    return (sol=ode_solution, saves=isnothing(npi) ? nothing : npi.saved_values,
-        npi=isnothing(npi) ? nothing : npi)
+    # Handle saved values - only reactive NPIs have saved_values
+    saved_vals = if isnothing(npi)
+        nothing
+    elseif isa(npi, Npi)
+        npi.saved_values
+    else  # TimedNpi
+        nothing
+    end
+
+    return (sol=ode_solution, saves=saved_vals, npi=npi)
 end
