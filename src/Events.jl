@@ -11,7 +11,7 @@ using OrdinaryDiffEq
 
 export make_state_condition,
        make_events, make_param_changer, make_param_reset,
-       get_coef, make_save_events, make_rt_logger
+       get_coef, make_save_events, make_rt_logger, make_timed_npi_callbacks
 
 """
     make_cond(threshold)::Function
@@ -169,6 +169,62 @@ make_rt_logger(savepoints) = begin
     pstcb_rt = PresetTimeCallback(savepoints, affect!)
 
     return pstcb_rt
+end
+
+"""
+    make_timed_npi_callbacks(npi::TimedNpi)
+
+Create a set of callbacks for time-limited NPIs that activate and deactivate
+at specified times. Each intervention phase applies a transmission reduction
+coefficient to the beta parameter.
+
+# Arguments
+- `npi::TimedNpi`: A TimedNpi struct containing intervention timing and coefficients
+
+# Returns
+- `CallbackSet`: A set of PresetTimeCallback objects that modify beta at the
+  specified intervention times
+
+# Details
+The function creates paired callbacks for each intervention phase:
+- At `start_times[i]`, beta is multiplied by `coefs[i]`
+- At `end_times[i]`, beta is reset to its original value
+
+Between phases, the original beta value is restored. Multiple phases can be
+specified to create complex intervention scenarios.
+
+# Example
+```julia
+timed_npi = TimedNpi([10.0, 30.0], [20.0, 40.0], [0.5, 0.3], "two_phase")
+callbacks = make_timed_npi_callbacks(timed_npi)
+```
+"""
+function make_timed_npi_callbacks(npi::DaedalusStructs.TimedNpi)
+    callbacks = []
+
+    for (t_on, t_off, coef) in zip(npi.start_times, npi.end_times, npi.coefs)
+        # Create effect function for NPI activation
+        # Multiply beta by the coefficient
+        affect_on! = function (integrator)
+            integrator.p.beta_now = integrator.p.beta * coef
+        end
+
+        # Create callback for activation
+        cb_on = PresetTimeCallback(t_on, affect_on!)
+        push!(callbacks, cb_on)
+
+        # Create effect function for NPI deactivation
+        # Reset beta to original value
+        affect_off! = function (integrator)
+            integrator.p.beta_now = integrator.p.beta
+        end
+
+        # Create callback for deactivation
+        cb_off = PresetTimeCallback(t_off, affect_off!)
+        push!(callbacks, cb_off)
+    end
+
+    return CallbackSet(callbacks...)
 end
 
 end

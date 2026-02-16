@@ -41,4 +41,7 @@ using Test
 
     # Include eigenvalue tests
     include("test_eigenvalue.jl")
+
+    # Include time-limited NPI tests
+    include("test_timed_npi.jl")
 end
