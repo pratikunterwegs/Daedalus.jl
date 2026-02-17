@@ -10,7 +10,7 @@ This is some minimal documentation for [Daedalus.jl](https://github.com/pratikun
 This documentation section is intended as a learning experience (for me) in writing Julia package documentation.
 
 [![License:MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Project Status: WIP – Initial development is in progress, but there has not yet been a stable, usable release suitable for the public.](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#wip)
+[![Project Status: Concept – Minimal or no implementation has been done yet, or the repository is only intended to be a limited example, demo, or proof-of-concept.](https://www.repostatus.org/badges/latest/concept.svg)](https://www.repostatus.org/#concept)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://pratikunterwegs.github.io/Daedalus.jl/dev/)
 [![Build Status](https://github.com/pratikunterwegs/Daedalus.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/pratikunterwegs/Daedalus.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Coverage](https://codecov.io/gh/pratikunterwegs/Daedalus.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/pratikunterwegs/Daedalus.jl)
