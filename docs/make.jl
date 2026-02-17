@@ -9,7 +9,7 @@ makedocs(;
     sitename="Daedalus.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://pratikgupte16@gmail.com.github.io/Daedalus.jl",
+        canonical="https://pratikunterwegs.github.io/Daedalus.jl",
         edit_link="main",
         assets=String[],
     ),
@@ -25,6 +25,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/pratikgupte16@gmail.com/Daedalus.jl",
+    repo="github.com/pratikunterwegs/Daedalus.jl",
     devbranch="main",
 )
