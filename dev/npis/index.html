@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Reactive NPIs · Daedalus.jl</title><meta name="title" content="Reactive NPIs · Daedalus.jl"/><meta property="og:title" content="Reactive NPIs · Daedalus.jl"/><meta property="twitter:title" content="Reactive NPIs · Daedalus.jl"/><meta name="description" content="Documentation for Daedalus.jl."/><meta property="og:description" content="Documentation for Daedalus.jl."/><meta property="twitter:description" content="Documentation for Daedalus.jl."/><meta property="og:url" content="https://pratikunterwegs.github.io/Daedalus.jl/npis/"/><meta property="twitter:url" content="https://pratikunterwegs.github.io/Daedalus.jl/npis/"/><link rel="canonical" href="https://pratikunterwegs.github.io/Daedalus.jl/npis/"/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">Daedalus.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../pkg_index/">Index</a></li><li><a class="tocitem" href="../reference/">Function Reference</a></li><li class="is-active"><a class="tocitem" href>Reactive NPIs</a><ul class="internal"><li><a class="tocitem" href="#Reactive-NPIs"><span>Reactive NPIs</span></a></li><li><a class="tocitem" href="#Timed-NPIs"><span>Timed NPIs</span></a></li></ul></li><li><a class="tocitem" href="../musings/">Implementing reactive events</a></li><li><a class="tocitem" href="../benchmarking/">Benchmarking</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Reactive NPIs</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Reactive NPIs</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/pratikunterwegs/Daedalus.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/pratikunterwegs/Daedalus.jl/blob/main/docs/src/npis.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><p>This module show how to use the <code>Npi</code> type to specify reactive events.</p><h2 id="Reactive-NPIs"><a class="docs-heading-anchor" href="#Reactive-NPIs">Reactive NPIs</a><a id="Reactive-NPIs-1"></a><a class="docs-heading-anchor-permalink" href="#Reactive-NPIs" title="Permalink"></a></h2><p>Updated to use the general <code>Npi</code> class rather than specialised <code>TimedNpi</code> and <code>ReactiveNpi</code> classes.</p><pre><code class="language-julia hljs">using Daedalus
+using Plots
+
+# create an Npi with the easy to use constructor
+hosp_threshold=20000.0
+a = Daedalus.DaedalusStructs.Npi(hosp_threshold, (coef=0.7,));
+
+data = daedalus(r0=3.0, npi=a, time_end=600.0);
+data_default = daedalus(r0=3.0, time_end=600.0);
+
+# plot new hosp over time
+iHosp = Daedalus.Constants.get_indices(&quot;H&quot;)
+hosp = [sum(x[iHosp]) for x in data.sol(0:600)]
+hosp_default = [sum(x[iHosp]) for x in data_default.sol(0:600)]
+
+iRt = Daedalus.Constants.get_indices(&quot;Rt&quot;)
+rt = [x[iRt] for x in data.sol(0:600)]
+rt_default = [x[iRt] for x in data_default.sol(0:600)]
+times = unique(data.sol.t)
+
+plot(times, hosp, label=&quot;Hosp w/ NPI&quot;)
+plot!(times, hosp_default, label=&quot;Hosp w/o NPI&quot;)
+xlabel!(&quot;Time (days)&quot;)
+ylabel!(&quot;Hosp occupancy&quot;)</code></pre><img src="59d74334.svg" alt="Example block output"/><p>Plot <span>$R_t$</span> to see more differences.</p><pre><code class="language-julia hljs">plot(times, rt, label=&quot;Rt w/ NPI&quot;)
+plot!(times, rt_default, label=&quot;Rt w/o NPI&quot;)
+xlabel!(&quot;Time (days)&quot;)
+ylabel!(&quot;Rt&quot;)</code></pre><img src="552a835d.svg" alt="Example block output"/><h2 id="Timed-NPIs"><a class="docs-heading-anchor" href="#Timed-NPIs">Timed NPIs</a><a id="Timed-NPIs-1"></a><a class="docs-heading-anchor-permalink" href="#Timed-NPIs" title="Permalink"></a></h2><p>Timed NPIs are responsive only to time and not state. These were translated from the implementation in the R package <em>daedalus</em> using Claude Sonnet 4.5 as a way of trying out Claude.</p><pre><code class="language-julia hljs">using Daedalus
+using Plots
+
+# define a timed npi giving the start times, end times, and beta scaling
+timed_npi = Daedalus.DaedalusStructs.TimedNpi(
+    [60.0, 180.0, 300.0],
+    [120.0, 200.0, 365.0],
+    [0.3, 0.7, 0.5],
+    &quot;three_phase_lockdown&quot;
+)
+
+data = daedalus(r0=3.0, npi=timed_npi, time_end=600.0);
+
+# get exposed
+iExpo = Daedalus.Constants.get_indices(&quot;E&quot;)
+exposed = [sum(x[iExpo]) for x in data.sol(0:600)]
+times = unique(data.sol.t)
+
+plot(times, exposed, label=&quot;Incidence w/ NPI&quot;)
+xlabel!(&quot;Time (days)&quot;)
+ylabel!(&quot;Incidence&quot;)</code></pre><img src="9d239cdd.svg" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../reference/">« Function Reference</a><a class="docs-footer-nextpage" href="../musings/">Implementing reactive events »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Tuesday 17 February 2026 12:23">Tuesday 17 February 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
