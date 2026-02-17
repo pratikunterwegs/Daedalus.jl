@@ -5,6 +5,7 @@ CurrentModule = Daedalus
 # Daedalus.jl
 
 This is some minimal documentation for [Daedalus.jl](https://github.com/pratikunterwegs/Daedalus.jl).
+
 **Note** that this is a personal project, and comes with no current or future support.
 This documentation section is intended as a learning experience (for me) in writing Julia package documentation.
 
