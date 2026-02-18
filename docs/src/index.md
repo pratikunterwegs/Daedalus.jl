@@ -29,22 +29,22 @@ using Plots
 data = daedalus(r0=5.0, time_end=600.0);
 
 # plot exposed group
-iExposed = Daedalus.Constants.get_indices("E")
-iHosp = Daedalus.Constants.get_indices("H")
-exposed = [sum(x[iExposed]) for x in data.sol.u]
-hosp = [sum(x[iHosp]) for x in data.sol.u]
+times = Daedalus.Outputs.get_times(data)
+# functiong get_values() bins into 90 days by default, set to 1 for no binning
+exposed = Daedalus.Outputs.get_values(data, "E", 1)
+hosp = Daedalus.Outputs.get_values(data, "H", 1)
 
 # plot the output to see lag in hospitalisations
-plot(data.sol.t, exposed, label="exposed")
-plot!(data.sol.t, hosp, label="hosp")
+plot(times, exposed, label="exposed")
+plot!(times, hosp, label="hosp")
 xlabel!("Time (days)")
 ylabel!("# individuals")
 ```
 
 ```@example basic_daedalus
 # plot recorded Rt
-iRt = Daedalus.Constants.get_indices("Rt")
-plot(data.sol.t, [x[iRt] for x in data.sol.u], label="Rt")
+vecRt = Daedalus.Outputs.get_values(data, "Rt", 1)
+plot(times, vecRt, label="Rt")
 xlabel!("Time (days)")
 ylabel!("Rt")
 ```

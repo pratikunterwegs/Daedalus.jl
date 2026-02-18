@@ -44,4 +44,7 @@ using Test
 
     # Include time-limited NPI tests
     include("test_timed_npi.jl")
+
+    # Include output processing tests
+    include("test_outputs.jl")
 end

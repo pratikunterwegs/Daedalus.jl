@@ -8,5 +8,6 @@ include("Helpers.jl")
 include("Ode.jl")
 include("Events.jl")
 include("Model.jl")
+include("Outputs.jl")
 
 end
