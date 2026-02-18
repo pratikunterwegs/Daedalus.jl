@@ -64,7 +64,7 @@ function get_values(output, comp::String, timebin::Int = 90)
     # bin_ends[b] is the exclusive upper boundary of bin b (1-indexed into vals),
     # so bin b covers vals[(b-1)*timebin+1 : bin_ends[b]].
     tmax_int = round(Int, tmax)
-    bin_ends = unique([collect(timebin:timebin:tmax_int); tmax_int + 1])
+    bin_ends = unique([collect(timebin:timebin:tmax_int); tmax_int]) .+ 1
     cumulative = cumsum(vals)
     binned = cumulative[bin_ends]
 
