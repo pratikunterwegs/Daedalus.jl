@@ -44,11 +44,17 @@ quarterly_H = get_values(output, "H", 90)
 rt = get_values(output, "Rt", 1)
 ```
 """
-function get_values(output, comp::String, timebin::Int = 90)
+function get_values(output, comp::String, timebin::Int = 90, strata::Union{Nothing,Vector{Int},UnitRange} = nothing)
     compidx = get_indices(comp)
     tmax = maximum(output.sol.t)
     times = output.sol.t
     u = output.sol.u
+
+    if isnothing(strata)
+        compidx = get_indices(comp)
+    else
+        compidx = get_indices(comp, strata)
+    end
 
     # Extract the summed compartment value at each integer timestep
     n_steps = round(Int, tmax) + 1
