@@ -178,10 +178,6 @@ function australia_initial_state(
     return init
 end
 
-# ---------------------------------------------------------------------------
-# General (multi-country) dispatch — accepts CountryData or a country name
-# ---------------------------------------------------------------------------
-
 """
     prepare_demog(cd::CountryData) -> Vector
 
