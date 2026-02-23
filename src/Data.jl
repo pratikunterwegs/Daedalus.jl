@@ -300,8 +300,8 @@ Construct the initial epidemic state for a named country. Calls
 state = initial_state("United Kingdom")
 result = daedalus(
     initial_state = state,
-    contacts      = prepare_contacts("United Kingdom"),
-    cw            = worker_contacts("United Kingdom"),
+    contacts = prepare_contacts("United Kingdom"),
+    cw = worker_contacts("United Kingdom"),
 )
 ```
 """
