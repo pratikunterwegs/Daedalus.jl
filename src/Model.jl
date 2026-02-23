@@ -59,29 +59,29 @@ result = daedalus(r0=2.5, time_end=200.0, npi=npi)
 ```
 """
 function daedalus(;
-    initial_state=australia_initial_state(australia_demography()),
-    contacts=prepare_contacts(),
-    cw=worker_contacts(),
-    r0=1.3, # manual beta assumes R0 = 1.3, infectious period = 7 days
-    sigma=0.217,
-    p_sigma=0.867,
-    epsilon=0.58,
-    rho=0.003,
-    eta::Vector{Float64}=[0.018, 0.082, 0.018, 0.246],
-    omega::Vector{Float64}=[0.012, 0.012, 0.012, 0.012],
-    gamma_Ia=0.476,
-    gamma_Is=0.25,
-    gamma_H::Vector{Float64}=[0.034, 0.034, 0.034, 0.034],
-    nu=0.0,
-    psi::Float64=1.0 / 270.0,
-    npi::Union{Npi,TimedNpi,Nothing}=nothing,
-    log_rt=true,
-    time_end::Float64=100.0,
-    increment::Float64=1.0)
+        initial_state = australia_initial_state(australia_demography()),
+        contacts = prepare_contacts(),
+        cw = worker_contacts(),
+        r0 = 1.3, # manual beta assumes R0 = 1.3, infectious period = 7 days
+        sigma = 0.217,
+        p_sigma = 0.867,
+        epsilon = 0.58,
+        rho = 0.003,
+        eta::Vector{Float64} = [0.018, 0.082, 0.018, 0.246],
+        omega::Vector{Float64} = [0.012, 0.012, 0.012, 0.012],
+        gamma_Ia = 0.476,
+        gamma_Is = 0.25,
+        gamma_H::Vector{Float64} = [0.034, 0.034, 0.034, 0.034],
+        nu = 0.0,
+        psi::Float64 = 1.0 / 270.0,
+        npi::Union{Npi, TimedNpi, Nothing} = nothing,
+        log_rt = true,
+        time_end::Float64 = 100.0,
+        increment::Float64 = 1.0)
 
     # calculate beta
     beta = get_beta(
-        prepare_contacts(scaled=false),
+        prepare_contacts(scaled = false),
         r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
     )
 
@@ -92,7 +92,7 @@ function daedalus(;
 
     # NGM
     ngm = get_ngm(
-        prepare_contacts(scaled=false),
+        prepare_contacts(scaled = false),
         r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
     )
     demog = SVector{N_TOTAL_GROUPS}(prepare_demog())
@@ -154,7 +154,7 @@ function daedalus(;
     end
 
     # get the solution, ensuring that tstops includes t_vax
-    ode_solution = solve(ode_problem, callback=cb_set, saveat=savepoints)
+    ode_solution = solve(ode_problem, callback = cb_set, saveat = savepoints)
 
     # Handle saved values - only reactive NPIs have saved_values
     saved_vals = if isnothing(npi)
@@ -165,5 +165,5 @@ function daedalus(;
         nothing
     end
 
-    return (sol=ode_solution, saves=saved_vals, npi=npi)
+    return (sol = ode_solution, saves = saved_vals, npi = npi)
 end

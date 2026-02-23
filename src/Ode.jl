@@ -37,7 +37,7 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
     R = @view U[:, iR, :]
 
     # calculate new infections and re-infections
-    community_infectious = sum(Is .+ Ia * p.epsilon, dims=2)
+    community_infectious = sum(Is .+ Ia * p.epsilon, dims = 2)
     foi = p.beta_now * p.contacts * community_infectious
 
     # NOTE: element-wise multiplication
