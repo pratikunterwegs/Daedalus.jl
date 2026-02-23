@@ -6,9 +6,6 @@ CurrentModule = Daedalus
 
 This is some minimal documentation for [Daedalus.jl](https://github.com/pratikunterwegs/Daedalus.jl).
 
-**Note** that this is a personal project, and comes with no current or future support.
-This documentation section is intended as a learning experience (for me) in writing Julia package documentation.
-
 [![License:MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Project Status: Concept – Minimal or no implementation has been done yet, or the repository is only intended to be a limited example, demo, or proof-of-concept.](https://www.repostatus.org/badges/latest/concept.svg)](https://www.repostatus.org/#concept)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://pratikunterwegs.github.io/Daedalus.jl/dev/)
@@ -20,6 +17,17 @@ _Daedalus.jl_ is a Julia package that aims to mirror the [R package {daedalus}](
 
 This section shows how to run the Daedalus Julia model.
 Functionality compared to the R package is limited.
+
+## Installation
+
+_Daedalus.jl_ can be installed from GitHub using the Julia package manager _Pkg.jl_.
+
+```julia
+using Pkg
+Pkg.add(url="git@github.com:pratikunterwegs/Daedalus.jl.git")
+```
+
+## Quick start
 
 ```@example basic_daedalus
 using Daedalus
@@ -48,3 +56,50 @@ plot(times, vecRt, label="Rt")
 xlabel!("Time (days)")
 ylabel!("Rt")
 ```
+
+## Running Daedalus for a specific country
+
+Country-specific demography, contact patterns, and workforce data are available via `DataLoader`. Pass the country name string to `initial_state`, `prepare_contacts`, and `worker_contacts` to build the model inputs for any supported country.
+
+```@example uk_daedalus
+using Daedalus
+using Plots
+
+# Build UK-specific inputs
+state = Daedalus.Data.initial_state("United Kingdom")
+contacts = Daedalus.Data.prepare_contacts("United Kingdom")
+cw = Daedalus.Data.worker_contacts("United Kingdom")
+
+# Run the model using UK demography and contact patterns
+data_uk = daedalus(
+    initial_state = state,
+    contacts = contacts,
+    cw = cw,
+    r0 = 2.5,
+    time_end = 600.0
+)
+
+times_uk = Daedalus.Outputs.get_times(data_uk)
+exposed_uk = Daedalus.Outputs.get_values(data_uk, "E", 1)
+hosp_uk = Daedalus.Outputs.get_values(data_uk, "H", 1)
+
+plot(times_uk, exposed_uk, label = "exposed")
+plot!(times_uk, hosp_uk, label = "hospitalised")
+xlabel!("Time (days)")
+ylabel!("# individuals")
+title!("United Kingdom — SEIR dynamics")
+
+```
+
+```@example uk_daedalus
+# Effective reproduction number over time
+rt_uk = Daedalus.Outputs.get_values(data_uk, "Rt", 1)
+plot(times_uk, rt_uk, label = "Rt", color = :red)
+hline!([1.0], linestyle = :dash, color = :black, label = "Rt = 1")
+xlabel!("Time (days)")
+ylabel!("Rt")
+title!("United Kingdom — effective reproduction number")
+```
+
+See [Country and pathogen data](@ref) for a full overview of the bundled
+data and how to use pathogen-specific parameters.
