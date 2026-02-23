@@ -9,8 +9,8 @@ using LinearAlgebra
 using StaticArrays
 
 export australia_initial_state, australia_demography, prepare_contacts,
-    prepare_community_contacts, worker_contacts, consumer_worker_contacts,
-    prepare_demog, australia_contacts, initial_state
+       prepare_community_contacts, worker_contacts, consumer_worker_contacts,
+       prepare_demog, australia_contacts, initial_state
 
 """
     australia_demography()
@@ -28,9 +28,9 @@ Get contacts between DAEDALUS demography groups as a matrix.
 """
 function australia_contacts()
     cm = [[3.7187500 2.5982168 5.739112 0.2728101]
-        [0.9095369 13.0623374 5.741992 0.5229291]
-        [0.6420045 1.8348941 11.256655 1.0003495]
-        [0.1347582 0.6540519 3.760931 2.5421895]]
+          [0.9095369 13.0623374 5.741992 0.5229291]
+          [0.6420045 1.8348941 11.256655 1.0003495]
+          [0.1347582 0.6540519 3.760931 2.5421895]]
 
     return cm
 end
@@ -61,7 +61,7 @@ Data sourced from `sectorcontacts.csv` via `DataLoader`. When `scaled=true`
 (default), values are divided element-wise by sector workforce counts so that
 the result is contacts per worker (as used in the ODE force-of-infection).
 """
-function worker_contacts(workers=aus_workers(); scaled=true)
+function worker_contacts(workers = aus_workers(); scaled = true)
     x = Vector{Float64}(DataLoader.get_economic_contacts().contacts_workplace)
 
     if scaled
@@ -71,7 +71,7 @@ function worker_contacts(workers=aus_workers(); scaled=true)
     return SVector{N_ECON_GROUPS}(x)
 end
 
-function consumer_worker_contacts(demography=australia_demography(); scaled=true)
+function consumer_worker_contacts(demography = australia_demography(); scaled = true)
     ccw = repeat([1.0], N_ECON_GROUPS * N_AGE_GROUPS)
     ccw = reshape(ccw, N_ECON_GROUPS, N_AGE_GROUPS)
 
@@ -80,8 +80,7 @@ function consumer_worker_contacts(demography=australia_demography(); scaled=true
         ccw *= Diagonal(1 ./ demography[i_AGE_GROUPS])
     end
 
-
-    return SMatrix{N_ECON_GROUPS,N_AGE_GROUPS}(ccw)
+    return SMatrix{N_ECON_GROUPS, N_AGE_GROUPS}(ccw)
 end
 
 """
@@ -91,23 +90,21 @@ Get a contact matrix for all age-groups and economic sectors as a StaticArrays
     `SMatrix`. Operates on default data.
 """
 # Function to prepare 49x49 community contacts matrix
-function prepare_contacts(cm=australia_contacts(); scaled=true)
+function prepare_contacts(cm = australia_contacts(); scaled = true)
     # community contacts, colwise div by size of from-group
     cm_x = ones(N_TOTAL_GROUPS, N_TOTAL_GROUPS) .* cm[i_WORKING_AGE, i_WORKING_AGE]
     cm_x[i_AGE_GROUPS, i_AGE_GROUPS] = cm
     cm_x[i_AGE_GROUPS, i_ECON_GROUPS] .= cm[:, i_WORKING_AGE]
     cm_x[i_ECON_GROUPS, i_AGE_GROUPS] .= reshape(cm[i_WORKING_AGE, :], 1, N_AGE_GROUPS)
 
-    cm_x[i_ECON_GROUPS, i_AGE_GROUPS] +=
-        consumer_worker_contacts(scaled=false)
-    cm_x[i_ECON_GROUPS, i_ECON_GROUPS] +=
-        Diagonal(worker_contacts(scaled=false))
+    cm_x[i_ECON_GROUPS, i_AGE_GROUPS] += consumer_worker_contacts(scaled = false)
+    cm_x[i_ECON_GROUPS, i_ECON_GROUPS] += Diagonal(worker_contacts(scaled = false))
 
     if scaled
         cm_x *= Diagonal(1 ./ prepare_demog())
     end
 
-    return SMatrix{N_TOTAL_GROUPS,N_TOTAL_GROUPS}(cm_x)
+    return SMatrix{N_TOTAL_GROUPS, N_TOTAL_GROUPS}(cm_x)
 end
 
 """
@@ -119,7 +116,7 @@ within-sector workplace contacts or consumer-worker contacts to the matrix.
 Those routes are kept separate for use in the ODE force-of-infection
 calculation (see `plan_ode.md`).
 """
-function prepare_community_contacts(cm=australia_contacts(); scaled=true)
+function prepare_community_contacts(cm = australia_contacts(); scaled = true)
     cm_x = ones(N_TOTAL_GROUPS, N_TOTAL_GROUPS) .* cm[i_WORKING_AGE, i_WORKING_AGE]
     cm_x[i_AGE_GROUPS, i_AGE_GROUPS] = cm
     cm_x[i_AGE_GROUPS, i_ECON_GROUPS] .= cm[:, i_WORKING_AGE]
@@ -130,7 +127,7 @@ function prepare_community_contacts(cm=australia_contacts(); scaled=true)
         cm_x *= Diagonal(1 ./ prepare_demog())
     end
 
-    return SMatrix{N_TOTAL_GROUPS,N_TOTAL_GROUPS}(cm_x)
+    return SMatrix{N_TOTAL_GROUPS, N_TOTAL_GROUPS}(cm_x)
 end
 
 """
@@ -140,7 +137,7 @@ Get a population vector for all age-groups and economic sectors for the force of
     infection calculation for community infections.
 """
 # Function to prepare 49 element demography vector for I/N in FOI calculation
-function prepare_demog(demog=australia_demography(), workers=aus_workers())
+function prepare_demog(demog = australia_demography(), workers = aus_workers())
     return [demog; workers]
 end
 
@@ -152,7 +149,7 @@ age groups and 49 economic sectors (comprised of working age individuals), and
 two vaccination strata for unvaccinated and vaccinated individuals.
 """
 function australia_initial_state(
-    demography=australia_demography(), workers=aus_workers())
+        demography = australia_demography(), workers = aus_workers())
 
     # assume all infectious go into Is
     p_infected = 1e-6
@@ -202,7 +199,7 @@ Get per-capita social contacts within each economic sector using workforce
 counts from `cd`. Sectors with zero workers are treated as having 1 worker
 to avoid division by zero.
 """
-function worker_contacts(cd::CountryData; scaled=true)
+function worker_contacts(cd::CountryData; scaled = true)
     x = Vector{Float64}(DataLoader.get_economic_contacts().contacts_workplace)
     if scaled
         x = x ./ max.(cd.workers, 1)
@@ -216,8 +213,8 @@ end
 Get the 45×4 consumer-worker contact matrix scaled by the age-group
 demography in `cd`.
 """
-function consumer_worker_contacts(cd::CountryData; scaled=true)
-    return consumer_worker_contacts(cd.demography; scaled=scaled)
+function consumer_worker_contacts(cd::CountryData; scaled = true)
+    return consumer_worker_contacts(cd.demography; scaled = scaled)
 end
 
 """
@@ -226,23 +223,23 @@ end
 Get a 49×49 contact matrix for all age-groups and economic sectors using
 the demographic and contact data in `cd`.
 """
-function prepare_contacts(cd::CountryData; scaled=true)
+function prepare_contacts(cd::CountryData; scaled = true)
     cm = cd.contact_matrix
     cm_x = ones(N_TOTAL_GROUPS, N_TOTAL_GROUPS) .* cm[i_WORKING_AGE, i_WORKING_AGE]
     cm_x[i_AGE_GROUPS, i_AGE_GROUPS] = cm
     cm_x[i_AGE_GROUPS, i_ECON_GROUPS] .= cm[:, i_WORKING_AGE]
     cm_x[i_ECON_GROUPS, i_AGE_GROUPS] .= reshape(cm[i_WORKING_AGE, :], 1, N_AGE_GROUPS)
 
-    cm_x[i_ECON_GROUPS, i_AGE_GROUPS] +=
-        consumer_worker_contacts(cd.demography; scaled=false)
-    cm_x[i_ECON_GROUPS, i_ECON_GROUPS] +=
-        Diagonal(worker_contacts(cd.workers; scaled=false))
+    cm_x[i_ECON_GROUPS, i_AGE_GROUPS] += consumer_worker_contacts(
+        cd.demography; scaled = false)
+    cm_x[i_ECON_GROUPS, i_ECON_GROUPS] += Diagonal(worker_contacts(
+        cd.workers; scaled = false))
 
     if scaled
         cm_x *= Diagonal(1 ./ prepare_demog(cd))
     end
 
-    return SMatrix{N_TOTAL_GROUPS,N_TOTAL_GROUPS}(cm_x)
+    return SMatrix{N_TOTAL_GROUPS, N_TOTAL_GROUPS}(cm_x)
 end
 
 """
@@ -251,7 +248,7 @@ end
 Get a 49×49 community-only contact matrix for all age-groups and economic
 sectors using `cd`. Workplace and consumer-worker contacts are excluded.
 """
-function prepare_community_contacts(cd::CountryData; scaled=true)
+function prepare_community_contacts(cd::CountryData; scaled = true)
     cm = cd.contact_matrix
     cm_x = ones(N_TOTAL_GROUPS, N_TOTAL_GROUPS) .* cm[i_WORKING_AGE, i_WORKING_AGE]
     cm_x[i_AGE_GROUPS, i_AGE_GROUPS] = cm
@@ -262,7 +259,7 @@ function prepare_community_contacts(cd::CountryData; scaled=true)
         cm_x *= Diagonal(1 ./ prepare_demog(cd))
     end
 
-    return SMatrix{N_TOTAL_GROUPS,N_TOTAL_GROUPS}(cm_x)
+    return SMatrix{N_TOTAL_GROUPS, N_TOTAL_GROUPS}(cm_x)
 end
 
 """
@@ -274,7 +271,7 @@ struct. A fraction `1e-6` of each group is seeded as symptomatic infectious.
 """
 function initial_state(cd::CountryData)
     demography = cd.demography
-    workers    = cd.workers
+    workers = cd.workers
 
     p_infected = 1e-6
     p_susc = 1.0 - p_infected
@@ -321,8 +318,8 @@ end
 
 Get the 49×49 contact matrix for a named country.
 """
-function prepare_contacts(country::String; scaled=true)
-    return prepare_contacts(DataLoader.get_country(country); scaled=scaled)
+function prepare_contacts(country::String; scaled = true)
+    return prepare_contacts(DataLoader.get_country(country); scaled = scaled)
 end
 
 """
@@ -330,8 +327,8 @@ end
 
 Get the 49×49 community-only contact matrix for a named country.
 """
-function prepare_community_contacts(country::String; scaled=true)
-    return prepare_community_contacts(DataLoader.get_country(country); scaled=scaled)
+function prepare_community_contacts(country::String; scaled = true)
+    return prepare_community_contacts(DataLoader.get_country(country); scaled = scaled)
 end
 
 """
@@ -339,8 +336,8 @@ end
 
 Get per-capita within-sector contact rates for a named country.
 """
-function worker_contacts(country::String; scaled=true)
-    return worker_contacts(DataLoader.get_country(country); scaled=scaled)
+function worker_contacts(country::String; scaled = true)
+    return worker_contacts(DataLoader.get_country(country); scaled = scaled)
 end
 
 """

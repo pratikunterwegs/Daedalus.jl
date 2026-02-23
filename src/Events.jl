@@ -58,7 +58,7 @@ end
 
 Make a CallbackSet from a Npi struct.
 """
-make_events(x::Npi, effect_on::Function, effect_off::Function, savepoints) = begin
+function make_events(x::Npi, effect_on::Function, effect_off::Function, savepoints)
     idx_on = DaedalusStructs.get_indices(x.params.comp_on)
     idx_off = DaedalusStructs.get_indices(x.params.comp_off)
 
@@ -115,7 +115,7 @@ end
 Make a CallbackSet of SavingCallbacks from an Npi struct. `savepoints` is
     expected to be a float range.
 """
-make_save_events(x::Npi, savepoints) = begin
+function make_save_events(x::Npi, savepoints)
     # the saving callbacks save to x.saved_values
     savingcb = SavingCallback(
         (u, t, integrator) -> begin
@@ -140,7 +140,7 @@ end
 
 Make a PresetTimeCallback to update Rt.
 """
-make_rt_logger(savepoints) = begin
+function make_rt_logger(savepoints)
     # make a PresetTimeCallback that updates u at integerish times
     iRt = Constants.get_indices("Rt")
 

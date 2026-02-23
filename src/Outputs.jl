@@ -44,7 +44,8 @@ quarterly_H = get_values(output, "H", 90)
 rt = get_values(output, "Rt", 1)
 ```
 """
-function get_values(output, comp::String, timebin::Int = 90, strata::Union{Nothing,Vector{Int},UnitRange} = nothing)
+function get_values(output, comp::String, timebin::Int = 90,
+        strata::Union{Nothing, Vector{Int}, UnitRange} = nothing)
     compidx = get_indices(comp)
     tmax = maximum(output.sol.t)
     times = output.sol.t
@@ -76,7 +77,6 @@ function get_values(output, comp::String, timebin::Int = 90, strata::Union{Nothi
 
     return [binned[1]; diff(binned)]
 end
-
 
 """
     get_times(output)

@@ -7,7 +7,7 @@ using DiffEqCallbacks
 using StaticArrays
 
 export Params, NpiData, Npi, TimedNpi, StateData, CtStateData, DsStateData,
-    get_indices, get_comp_threshold, n_phases, total_duration
+       get_indices, get_comp_threshold, n_phases, total_duration
 
 """
     Params
@@ -101,7 +101,7 @@ mutable struct Npi <: Event
 
     function Npi(value_on::Float64, coefs::NamedTuple)
         params = NpiData(value_on)
-        sv = SavedValues(Float64, Tuple{Bool,Float64,Float64}) # time and two data
+        sv = SavedValues(Float64, Tuple{Bool, Float64, Float64}) # time and two data
         return new(params, coefs, sv, false)
     end
 end
@@ -146,10 +146,10 @@ struct TimedNpi <: Event
     identifier::String
 
     function TimedNpi(
-        start_times::Vector{Float64},
-        end_times::Vector{Float64},
-        coefs::Vector{Float64},
-        identifier::String = "custom_timed"
+            start_times::Vector{Float64},
+            end_times::Vector{Float64},
+            coefs::Vector{Float64},
+            identifier::String = "custom_timed"
     )
         # Validate vector lengths match
         n_phases = length(start_times)
@@ -213,10 +213,10 @@ struct TimedNpi <: Event
 
     # Convenience constructor for single-phase intervention
     function TimedNpi(
-        start_time::Float64,
-        end_time::Float64,
-        coef::Float64,
-        identifier::String = "single_phase"
+            start_time::Float64,
+            end_time::Float64,
+            coef::Float64,
+            identifier::String = "single_phase"
     )
         TimedNpi([start_time], [end_time], [coef], identifier)
     end
@@ -266,11 +266,11 @@ function Base.show(io::IO, npi::TimedNpi)
 
     for i in 1:n
         duration = npi.end_times[i] - npi.start_times[i]
-        reduction = round((1.0 - npi.coefs[i]) * 100, digits=1)
+        reduction = round((1.0 - npi.coefs[i]) * 100, digits = 1)
         println(
             io,
             "  Phase $i: days $(npi.start_times[i])-$(npi.end_times[i]) " *
-                "($(round(duration, digits=1))d), $(reduction)% reduction"
+            "($(round(duration, digits=1))d), $(reduction)% reduction"
         )
     end
 end

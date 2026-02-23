@@ -2,21 +2,17 @@
 module DataLoader
 
 export CountryData, InfectionData, VaccinationScenario, EconomicContacts,
-    get_country, list_countries,
-    get_pathogen, list_pathogens,
-    get_economic_contacts, get_sector_names,
-    get_vaccination_scenario, list_vaccination_scenarios,
-    get_closure_strategy, list_closure_strategies
+       get_country, list_countries,
+       get_pathogen, list_pathogens,
+       get_economic_contacts, get_sector_names,
+       get_vaccination_scenario, list_vaccination_scenarios,
+       get_closure_strategy, list_closure_strategies
 
 using CSV
 using DataFrames
 using Statistics
 
 const DATA_DIR = joinpath(@__DIR__, "data")
-
-# ---------------------------------------------------------------------------
-# Structs
-# ---------------------------------------------------------------------------
 
 """
     CountryData
@@ -76,33 +72,21 @@ struct EconomicContacts
     contacts_between_sectors::Matrix{Float64}     # 45×45
 end
 
-# ---------------------------------------------------------------------------
-# Module-level lazy caches
-# ---------------------------------------------------------------------------
-
-const _country_cache   = Ref{Union{Nothing, Dict{String, CountryData}}}(nothing)
-const _pathogen_cache  = Ref{Union{Nothing, Dict{String, InfectionData}}}(nothing)
-const _econ_cache      = Ref{Union{Nothing, EconomicContacts}}(nothing)
-const _sectors_cache   = Ref{Union{Nothing, Vector{String}}}(nothing)
-const _closure_cache   = Ref{Union{Nothing, Dict{String, Vector{Float64}}}}(nothing)
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
+const _country_cache = Ref{Union{Nothing, Dict{String, CountryData}}}(nothing)
+const _pathogen_cache = Ref{Union{Nothing, Dict{String, InfectionData}}}(nothing)
+const _econ_cache = Ref{Union{Nothing, EconomicContacts}}(nothing)
+const _sectors_cache = Ref{Union{Nothing, Vector{String}}}(nothing)
+const _closure_cache = Ref{Union{Nothing, Dict{String, Vector{Float64}}}}(nothing)
 
 # Map 5-year bin index (1-based, where bin k covers ages (k-1)*5 to k*5)
 # to one of the 4 DAEDALUS age groups.
 # Used for both the demography bins (1-21) and the CM bins (1-16).
 function _bin_to_group(k::Int)::Int
-    k == 1             && return 1   # 0-4
-    1 < k <= 4         && return 2   # 5-19
-    4 < k <= 13        && return 3   # 20-64
+    k == 1 && return 1   # 0-4
+    1 < k <= 4 && return 2   # 5-19
+    4 < k <= 13 && return 3   # 20-64
     return 4                          # 65+
 end
-
-# ---------------------------------------------------------------------------
-# Economic contacts
-# ---------------------------------------------------------------------------
 
 function _load_economic_contacts()
     df = CSV.read(joinpath(DATA_DIR, "sectorcontacts.csv"), DataFrame)
@@ -125,10 +109,6 @@ function get_economic_contacts()::EconomicContacts
     return _econ_cache[]
 end
 
-# ---------------------------------------------------------------------------
-# Sector names
-# ---------------------------------------------------------------------------
-
 function _load_sector_names()
     df = CSV.read(joinpath(DATA_DIR, "sectorcontacts.csv"), DataFrame)
     return String.(df[!, :sector])
@@ -145,10 +125,6 @@ function get_sector_names()::Vector{String}
     end
     return _sectors_cache[]
 end
-
-# ---------------------------------------------------------------------------
-# Infection / pathogen data
-# ---------------------------------------------------------------------------
 
 # Age-bin groups for sevenpathogens.csv: 17 five-year bins (0-4, ..., 80+)
 # matching the IHR/IFR row indices ihr1-ihr17, ifr1-ifr17
@@ -185,25 +161,25 @@ function _load_pathogens()
         ifr_4 = _aggregate_age_bins(ifr)
 
         # Scalar parameters
-        ps    = getval("ps")
-        Tlat  = getval("Tlat")
-        Tay   = getval("Tay")
-        Tsr   = getval("Tsr")
-        Tsh   = getval("Tsh")
+        ps = getval("ps")
+        Tlat = getval("Tlat")
+        Tay = getval("Tay")
+        Tsr = getval("Tsr")
+        Tsh = getval("Tsh")
         Threc = getval("Threc")
-        Thd   = getval("Thd")
-        Ti    = getval("Ti")
-        red   = getval("red")
-        r0    = getval("R0")
+        Thd = getval("Thd")
+        Ti = getval("Ti")
+        red = getval("red")
+        r0 = getval("R0")
 
         # Derived rates
-        sigma           = 1.0 / Tlat
-        gamma_Ia        = 1.0 / Tay
-        gamma_Is        = 1.0 / Tsr
-        gamma_H_rec     = 1.0 / Threc
-        gamma_H_death   = 1.0 / Thd
-        rho             = 1.0 / Ti
-        epsilon         = red
+        sigma = 1.0 / Tlat
+        gamma_Ia = 1.0 / Tay
+        gamma_Is = 1.0 / Tsr
+        gamma_H_rec = 1.0 / Threc
+        gamma_H_death = 1.0 / Thd
+        rho = 1.0 / Ti
+        epsilon = red
 
         # eta[age] = (IHR[age] / p_sigma) / Tsh
         eta = (ihr_4 ./ ps) ./ Tsh
@@ -248,15 +224,11 @@ function list_pathogens()::Vector{String}
     return collect(keys(_pathogen_cache[]))
 end
 
-# ---------------------------------------------------------------------------
-# Vaccination scenarios  (hardcoded — no CSV required)
-# ---------------------------------------------------------------------------
-
 const VACCINATION_SCENARIOS = Dict{String, VaccinationScenario}(
-    "none"   => VaccinationScenario(365.0, 1.0/7/100, 0.40, 0.50, 270.0),
-    "low"    => VaccinationScenario(300.0, 2.0/7/100, 0.50, 0.50, 270.0),
-    "medium" => VaccinationScenario(200.0, 3.0/7/100, 0.60, 0.50, 270.0),
-    "high"   => VaccinationScenario(100.0, 3.5/7/100, 0.80, 0.50, 270.0),
+    "none" => VaccinationScenario(365.0, 1.0 / 7 / 100, 0.40, 0.50, 270.0),
+    "low" => VaccinationScenario(300.0, 2.0 / 7 / 100, 0.50, 0.50, 270.0),
+    "medium" => VaccinationScenario(200.0, 3.0 / 7 / 100, 0.60, 0.50, 270.0),
+    "high" => VaccinationScenario(100.0, 3.5 / 7 / 100, 0.80, 0.50, 270.0)
 )
 
 """
@@ -267,7 +239,8 @@ Return parameters for the named vaccination scenario. Call
 """
 function get_vaccination_scenario(name::String)::VaccinationScenario
     haskey(VACCINATION_SCENARIOS, name) ||
-        error("Scenario not found: $name. Available: " * join(keys(VACCINATION_SCENARIOS), ", "))
+        error("Scenario not found: $name. Available: " *
+              join(keys(VACCINATION_SCENARIOS), ", "))
     return VACCINATION_SCENARIOS[name]
 end
 
@@ -280,10 +253,6 @@ function list_vaccination_scenarios()::Vector{String}
     return collect(keys(VACCINATION_SCENARIOS))
 end
 
-# ---------------------------------------------------------------------------
-# Closure / response strategies
-# ---------------------------------------------------------------------------
-
 function _load_closure_strategies()
     df = CSV.read(joinpath(DATA_DIR, "economic_closures.csv"), DataFrame)
     n_sectors = nrow(df)
@@ -294,10 +263,10 @@ function _load_closure_strategies()
     #   "economic_closures" -> "Economic Closures" column (light level)
     #   "school_closures"   -> "School Closures" column   (light level)
     result = Dict{String, Vector{Float64}}(
-        "none"              => ones(Float64, n_sectors),
-        "elimination"       => Float64.(df[!, "Elimination"]),
+        "none" => ones(Float64, n_sectors),
+        "elimination" => Float64.(df[!, "Elimination"]),
         "economic_closures" => Float64.(df[!, "Economic Closures"]),
-        "school_closures"   => Float64.(df[!, "School Closures"]),
+        "school_closures" => Float64.(df[!, "School Closures"])
     )
     return result
 end
@@ -330,10 +299,6 @@ function list_closure_strategies()::Vector{String}
     return collect(keys(_closure_cache[]))
 end
 
-# ---------------------------------------------------------------------------
-# Country data
-# ---------------------------------------------------------------------------
-
 # Letter position in a-p (a=1, ..., p=16)
 const _LETTER_POS = Dict(c => i for (i, c) in enumerate('a':'p'))
 
@@ -346,7 +311,7 @@ function _demog_bins_to_4(pop16::Vector{Float64})::Vector{Float64}
         pop16[1],
         sum(pop16[2:4]),
         sum(pop16[5:13]),
-        sum(pop16[14:16]),
+        sum(pop16[14:16])
     ]
 end
 
@@ -365,6 +330,7 @@ function _aggregate_cm(cm16::Matrix{Float64}, pop16::Vector{Float64})::Matrix{Fl
 
     cm4 = zeros(Float64, 4, 4)
     for to_bin in 1:16, from_bin in 1:16
+
         gi = groups[to_bin]
         gj = groups[from_bin]
         cm4[gi, gj] += cm16[to_bin, from_bin] * pop16[to_bin]
@@ -377,11 +343,11 @@ end
 
 function _load_countries()
     country_df = CSV.read(joinpath(DATA_DIR, "country_data.csv"), DataFrame)
-    hosp_df    = CSV.read(joinpath(DATA_DIR, "hospital_capacity.csv"), DataFrame)
+    hosp_df = CSV.read(joinpath(DATA_DIR, "hospital_capacity.csv"), DataFrame)
     # sector_gva_data.csv has a junk first row; row 2 is the real header
-    gva_df     = CSV.read(
+    gva_df = CSV.read(
         joinpath(DATA_DIR, "sector_gva_data.csv"), DataFrame;
-        header=2
+        header = 2
     )
     # Ensure the country column is named "Country" (strip any leading whitespace)
     rename!(gva_df, first(names(gva_df)) => "Country")
@@ -393,23 +359,23 @@ function _load_countries()
 
     # Build GVA lookup: country -> Vector{Float64}(45)
     # Columns 2:46 are the 45 sector GVA values; some cells may be non-numeric
-    _parse_gva(x::Number)       = abs(Float64(x))
+    _parse_gva(x::Number) = abs(Float64(x))
     _parse_gva(x::AbstractString) = abs(something(tryparse(Float64, strip(x)), 0.0))
-    _parse_gva(::Missing)       = 0.0
-    _parse_gva(x)               = 0.0
+    _parse_gva(::Missing) = 0.0
+    _parse_gva(x) = 0.0
 
     gva_lookup = Dict{String, Vector{Float64}}()
     for r in eachrow(gva_df)
         cname = String(r.Country)
-        vals  = [_parse_gva(r[i]) for i in 2:ncol(gva_df)]
+        vals = [_parse_gva(r[i]) for i in 2:ncol(gva_df)]
         length(vals) == 45 && (gva_lookup[cname] = vals)
     end
 
     # Identify CM and population columns
-    all_cols  = names(country_df)
-    cm_cols   = filter(c -> startswith(c, "CM"), all_cols)
+    all_cols = names(country_df)
+    cm_cols = filter(c -> startswith(c, "CM"), all_cols)
     npop_cols = ["Npop$i" for i in 1:21]
-    nns_cols  = ["NNs$i"  for i in 1:45]
+    nns_cols = ["NNs$i" for i in 1:45]
 
     result = Dict{String, CountryData}()
 
@@ -428,7 +394,7 @@ function _load_countries()
             pop21[1],
             sum(pop21[2:4]),
             sum(pop21[5:13]),
-            sum(pop21[14:21]),
+            sum(pop21[14:21])
         ]
 
         # --- Workers: 45 sectors ---
@@ -442,7 +408,7 @@ function _load_countries()
         cm16 = zeros(Float64, 16, 16)
         for colname in cm_cols
             letters = colname[3:4]   # e.g. "CMab" -> "ab"
-            to_pos  = get(_LETTER_POS, letters[1], 0)
+            to_pos = get(_LETTER_POS, letters[1], 0)
             frm_pos = get(_LETTER_POS, letters[2], 0)
             (to_pos == 0 || frm_pos == 0) && continue
             v = row[Symbol(colname)]
@@ -480,7 +446,8 @@ function get_country(name::String)::CountryData
         _country_cache[] = _load_countries()
     end
     d = _country_cache[]
-    haskey(d, name) || error("Country \"$name\" not found. Call list_countries() to see available names.")
+    haskey(d, name) ||
+        error("Country \"$name\" not found. Call list_countries() to see available names.")
     return d[name]
 end
 
