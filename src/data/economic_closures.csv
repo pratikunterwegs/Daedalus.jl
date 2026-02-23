@@ -1,0 +1,46 @@
+Sector,Elimination,Lockdown,Economic Closures,Lockdown (School Closures),School Closures
+" Agriculture, hunting, forestry",1.0000,0.8550,0.8840,1.0000,1.0000
+ Fishing and aquaculture,1.0000,0.8550,0.8840,1.0000,1.0000
+" Mining and quarrying, energy producing products",1.0000,0.9030,0.9110,0.6740,0.7903
+" Mining and quarrying, non-energy producing products",1.0000,0.9030,0.9110,1.0000,1.0000
+ Mining support service activities,1.0000,0.9030,0.9110,1.0000,1.0000
+" Food products, beverages and tobacco",1.0000,0.6970,0.9350,1.0000,1.0000
+" Textiles, textile products, leather and footwear",0.9816,0.6970,0.9350,0.8888,0.9173
+ Wood and products of wood and cork,0.9816,0.6970,0.9350,0.9972,0.9478
+ Paper products and printing,0.9816,0.6970,0.9350,1.0000,0.9840
+ Coke and refined petroleum products,0.8804,0.6970,0.9350,0.8747,0.8775
+ Chemical and chemical products,0.8804,0.6970,0.9350,1.0000,1.0000
+" Pharmaceuticals, medicinal chemical and botanical products",0.8804,0.6970,0.9350,1.0000,1.0000
+ Rubber and plastics products,0.8804,0.6970,0.9350,0.8702,1.0000
+ Other non-metallic mineral products,0.8804,0.6970,0.9350,0.9154,0.8891
+ Basic metals,1.0000,0.6970,0.9350,1.0000,1.0000
+ Fabricated metal products,1.0000,0.6970,0.9350,0.9049,1.0000
+" Computer, electronic and optical equipment",1.0000,0.6970,0.9350,0.9049,1.0000
+ Electrical equipment,1.0000,0.6970,0.9350,0.9049,1.0000
+" Machinery and equipment, nec",1.0000,0.6970,0.9350,0.8898,0.9496
+" Motor vehicles, trailers and semi-trailers",1.0000,0.6970,0.9350,0.6564,0.8176
+ Other transport equipment,1.0000,0.6970,0.9350,0.6564,0.8176
+ Manufacturing nec; repair and installation of machinery and equipment,0.9816,0.6970,0.9350,0.9829,1.0000
+" Electricity, gas, steam and air conditioning supply",0.9701,0.8860,0.9960,0.9386,0.9428
+" Water supply; sewerage, waste management and remediation activities",0.9749,0.9240,0.9770,1.0000,1.0000
+ Construction,0.9448,0.5570,0.9190,0.9477,0.9512
+ Wholesale and retail trade; repair of motor vehicles,1.0000,0.6450,1.0000,0.9214,0.9702
+ Land transport and transport via pipelines,1.0000,0.6340,0.8170,0.8281,0.9973
+ Water transport,1.0000,0.6340,0.8170,0.8083,0.9834
+ Air transport,0.1849,0.6340,0.8170,0.1577,0.4160
+ Warehousing and support activities for transportation,0.9061,0.6340,0.8170,0.6389,0.9056
+ Postal and courier activities,0.9061,0.6340,0.8170,0.6389,0.9056
+ Accommodation and food service activities,0.9165,0.0950,0.8530,0.7734,0.9073
+" Publishing, audiovisual and broadcasting activities",1.0000,0.8780,0.9130,1.0000,1.0000
+ Telecommunications,1.0000,0.8780,0.9130,1.0000,1.0000
+ IT and other information services,1.0000,0.8780,0.9130,1.0000,1.0000
+ Financial and insurance activities,1.0000,0.9450,0.9550,1.0000,1.0000
+ Real estate activities,1.0000,0.9820,0.9850,1.0000,1.0000
+" Professional, scientific and technical activities",1.0000,0.8540,0.9200,0.9010,0.9470
+ Administrative and support services,0.8996,0.6610,0.8000,0.9010,0.9470
+ Public administration and defence; compulsory social security,1.0000,1.0000,1.0000,0.9556,1.0000
+ Education,1.0000,0.1000,1.0000,0.1000,0.1000
+ Human health and social work activities,1.0000,0.7540,0.9170,1.0000,1.0000
+" Arts, entertainment and recreation",0.9406,0.5510,0.7140,0.9025,0.9574
+ Other service activities,0.9445,0.5400,0.8310,0.9025,0.9574
+ Activities of households as employers; undifferentiated goods- and services-producing activities of households for own use,0.9445,0.4880,0.5340,0.9025,0.9574
