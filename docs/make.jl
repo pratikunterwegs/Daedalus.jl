@@ -16,6 +16,7 @@ makedocs(;
     checkdocs = :exports,
     pages = [
         "Home" => "index.md",
+        "Country and pathogen data" => "country_data.md",
         "Index" => "pkg_index.md",
         "Function Reference" => "reference.md",
         "Reactive NPIs" => "npis.md",

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Documentation page for country and pathogen data (`docs/src/country_data.md`)
+- UK example in `docs/src/index.md` showing how to run the model with country-specific inputs
+- `DataLoader` module added to function reference autodocs
+
 ## [0.0.1] - 2026-02-23
 
 ### Added
