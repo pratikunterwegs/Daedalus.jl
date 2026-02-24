@@ -149,21 +149,20 @@ function make_rt_logger(savepoints)
     v_prev = randn(N_TOTAL_GROUPS)
     v_prev = v_prev / norm(v_prev)
 
+    idx_S = Constants.get_indices("S")
+
     function affect!(integrator)
-        U = @view integrator.u[1:(end - 1)] # hardcoded
-        U = reshape(U, (N_TOTAL_GROUPS, N_COMPARTMENTS, N_VACCINE_STRATA))
+        S = @view integrator.u[idx_S] # hardcoded, as vax comp is empty
 
-        S = @view U[:, iS, :]
-
-        p_susc = sum(S, dims = 2) ./ integrator.p.demography
+        p_susc = S ./ integrator.p.demography
         ngm_susc = integrator.p.ngm .* p_susc
 
         # Use power iteration to compute only the dominant eigenvalue
         # This is significantly faster than computing all eigenvalues
         rt = Helpers.dominant_eigenvalue(
-            ngm_susc, v_init = v_prev, max_iter = 50, tol = 1e-5)
+            ngm_susc, v_init = v_prev, max_iter = 100, tol = 1e-5)
 
-        integrator.u[iRt] = rt
+        integrator.u[iRt] = rt # only logged here
     end
 
     pstcb_rt = PresetTimeCallback(savepoints, affect!)
