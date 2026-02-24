@@ -88,6 +88,9 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
 
     # change in dead
     @. dD = p.omega_now .* H
+
+    # Rt is updated by callbacks; keep its derivative zero between updates
+    du[end] = 0.0
 end
 
 end
