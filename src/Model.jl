@@ -29,14 +29,14 @@ strata.
 
 ## No intervention
 ```julia
-result = daedalus(r0=2.5, time_end=200.0)
+result = daedalus(country="Australia", r0=2.5, time_end=200.0)
 ```
 
 ## Single-phase time-limited intervention
 ```julia
 # 30% transmission reduction from day 15 to day 45
 npi = TimedNpi(15.0, 45.0, 0.7, "moderate_lockdown")
-result = daedalus(r0=2.5, time_end=200.0, npi=npi)
+result = daedalus(country="Australia", r0=2.5, time_end=200.0, npi=npi)
 ```
 
 ## Multi-phase time-limited intervention
@@ -48,14 +48,14 @@ npi = TimedNpi(
     [0.7, 0.3, 0.5],     # coefficients
     "three_phase_strategy"
 )
-result = daedalus(r0=2.5, time_end=200.0, npi=npi)
+result = daedalus(country="Australia", r0=2.5, time_end=200.0, npi=npi)
 ```
 
 ## Reactive (state-dependent) intervention
 ```julia
 # Triggers when hospitalizations reach threshold, deactivates when Rt < 1
 npi = Npi(5000.0, (coef=0.4,))
-result = daedalus(r0=2.5, time_end=200.0, npi=npi)
+result = daedalus(country="Australia", r0=2.5, time_end=200.0, npi=npi)
 ```
 """
 function daedalus(;

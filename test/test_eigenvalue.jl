@@ -166,6 +166,7 @@ end
     @testset "Rt logging with power iteration" begin
         # Run a short simulation with Rt logging enabled
         result = Daedalus.daedalus(
+            country = "Australia",
             r0 = 2.0,
             time_end = 50.0,
             increment = 1.0,
@@ -193,6 +194,7 @@ end
         npi = Daedalus.DaedalusStructs.Npi(20000.0, (coef = 0.7,))
 
         result = Daedalus.daedalus(
+            country = "Australia",
             r0 = 3.0,
             time_end = 100.0,
             increment = 1.0,

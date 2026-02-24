@@ -1,5 +1,5 @@
 @testset "Outputs.get_values" begin
-    output = daedalus(time_end = 100.0)
+    output = daedalus(country = "Australia", time_end = 100.0)
     tmax = 100
 
     @testset "daily values (timebin=1)" begin
@@ -19,7 +19,7 @@
     end
 
     @testset "bin alignment when tmax divisible by timebin" begin
-        output90 = daedalus(time_end = 90.0)
+        output90 = daedalus(country = "Australia", time_end = 90.0)
         daily = Daedalus.Outputs.get_values(output90, "H", 1)
         binned = Daedalus.Outputs.get_values(output90, "H", 90)
         @test length(binned) == 1

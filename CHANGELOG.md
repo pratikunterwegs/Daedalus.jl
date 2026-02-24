@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `daedalus` now requires a `country` string directly instead of separate `initial_state`, `contacts`, and `cw` arguments; all tests, examples, and documentation updated accordingly
+- Simplified UK example in `docs/src/index.md` to use `daedalus(country="United Kingdom", ...)`
+- Updated `docs/src/country_data.md` to reflect that `daedalus` accepts `country` directly
+
 ### Added
 - Documentation page for country and pathogen data (`docs/src/country_data.md`)
-- UK example in `docs/src/index.md` showing how to run the model with country-specific inputs
 - `DataLoader` module added to function reference autodocs
 
 ## [0.0.1] - 2026-02-23
