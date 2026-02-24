@@ -267,7 +267,7 @@ struct. A fraction `1e-6` of each group is seeded as symptomatic infectious.
 """
 function initial_state(cd::CountryData)
     demography = cd.demography
-    workers = cd.workers
+    workers = cd.workers .+ 1.0
 
     p_infected = 1e-6
     p_susc = 1.0 - p_infected

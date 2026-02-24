@@ -59,9 +59,7 @@ result = daedalus(r0=2.5, time_end=200.0, npi=npi)
 ```
 """
 function daedalus(;
-        initial_state = australia_initial_state(australia_demography()),
-        contacts = prepare_contacts(),
-        cw = worker_contacts(),
+        country::String,
         r0 = 1.3, # manual beta assumes R0 = 1.3, infectious period = 7 days
         sigma = 0.217,
         p_sigma = 0.867,
@@ -79,9 +77,15 @@ function daedalus(;
         time_end::Float64 = 100.0,
         increment::Float64 = 1.0)
 
+    # get all values from country string
+    init_state = initial_state(country)
+    contacts_scaled = prepare_contacts(country)
+    contacts_unscaled = prepare_contacts(country, scaled = false)
+    cw = worker_contacts(country)
+
     # calculate beta
     beta = get_beta(
-        prepare_contacts(scaled = false),
+        contacts_unscaled,
         r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
     )
 
@@ -92,16 +96,16 @@ function daedalus(;
 
     # NGM
     ngm = get_ngm(
-        prepare_contacts(scaled = false),
+        contacts_unscaled,
         r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
     )
-    demog = SVector{N_TOTAL_GROUPS}(prepare_demog())
+    demog = SVector{N_TOTAL_GROUPS}(prepare_demog(country))
 
     size::Int = N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA
 
     # combined parameters into an array; this is not recommended but this cannot be a tuple
     # using a StaticArray for the `contacts` helps cut computation as this is assigned only once(?)
-    parameters = Params(contacts, ngm, demog, cw, beta, beta, sigma, p_sigma,
+    parameters = Params(contacts_scaled, ngm, demog, cw, beta, beta, sigma, p_sigma,
         epsilon, rho, eta, omega, omega, gamma_Ia, gamma_Is, gamma_H, nu, psi,
         size)
 
@@ -110,12 +114,12 @@ function daedalus(;
     savepoints = 0.0:increment:time_end
 
     # add Rt compartment at end
-    initial_state = reshape(initial_state, length(initial_state))
-    initial_state = [initial_state; r0]
+    init_state = reshape(init_state, length(init_state))
+    init_state = [init_state; r0]
 
     # define the ode problem
     ode_problem = ODEProblem(
-        daedalus_ode!, initial_state, timespan, parameters
+        daedalus_ode!, init_state, timespan, parameters
     )
 
     # check if NPI is passed and define callbacks accordingly
