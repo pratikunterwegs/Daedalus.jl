@@ -7,6 +7,7 @@ using ..DaedalusStructs
 using ..Helpers
 
 using LinearAlgebra
+using StaticArrays
 
 """
     daedalus_ode!(du, u, p, t)
@@ -37,8 +38,15 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
     R = @view U[:, iR, :]
 
     # calculate new infections and re-infections
-    community_infectious = sum(Is .+ Ia * p.epsilon, dims = 2)
-    foi = p.beta_now * p.contacts * community_infectious
+    community_infectious = sum(Is .+ Ia .* p.epsilon, dims = 2)
+    cm_scaling = ones(p.settings) # NOTE: placeholder for future operations
+
+    # NOTE: this can probably be cleaned up
+    tot_cm = sum(
+        stack([cm_scaling[i] .* p.contacts[:, :, i] for i in 1:p.settings]),
+        dims = 3)[:, :, 1]
+
+    foi = p.beta_now * tot_cm * community_infectious
 
     # NOTE: element-wise multiplication
     new_I = S .* foi

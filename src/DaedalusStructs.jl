@@ -18,6 +18,7 @@ A mutable struct that holds the parameters for the DAEDALUS model.
 """
 mutable struct Params
     contacts::StaticArray
+    settings::Int
     ngm::StaticArray
     demography::StaticVector
     cw::StaticVector

@@ -60,7 +60,8 @@ result = daedalus(r0=2.5, time_end=200.0, npi=npi)
 """
 function daedalus(;
         initial_state = australia_initial_state(australia_demography()),
-        contacts = prepare_contacts(),
+        demography = prepare_demog(),
+        contacts = [prepare_contacts(), prepare_contacts()], # sim two settings, can be any N
         cw = worker_contacts(),
         r0 = 1.3, # manual beta assumes R0 = 1.3, infectious period = 7 days
         sigma = 0.217,
@@ -79,9 +80,15 @@ function daedalus(;
         time_end::Float64 = 100.0,
         increment::Float64 = 1.0)
 
+    # total contacts, flexible for length of `contacts`
+    # `first` used as sum in vector
+    total_contacts = first(sum(contacts, dims = [1, 2]))
+    settings = length(contacts)
+    contacts_array = SArray{Tuple{N_TOTAL_GROUPS, N_TOTAL_GROUPS, settings}}(stack(contacts))
+
     # calculate beta
     beta = get_beta(
-        prepare_contacts(scaled = false),
+        total_contacts,
         r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
     )
 
@@ -92,17 +99,18 @@ function daedalus(;
 
     # NGM
     ngm = get_ngm(
-        prepare_contacts(scaled = false),
+        total_contacts,
         r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
     )
-    demog = SVector{N_TOTAL_GROUPS}(prepare_demog())
+    demog = SVector{N_TOTAL_GROUPS}(demography)
 
     size::Int = N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA
 
     # combined parameters into an array; this is not recommended but this cannot be a tuple
     # using a StaticArray for the `contacts` helps cut computation as this is assigned only once(?)
-    parameters = Params(contacts, ngm, demog, cw, beta, beta, sigma, p_sigma,
-        epsilon, rho, eta, omega, omega, gamma_Ia, gamma_Is, gamma_H, nu, psi,
+    parameters::Params = Params(contacts_array, settings, ngm, demog, cw,
+        beta, beta, sigma, p_sigma, epsilon, rho, eta, omega, omega,
+        gamma_Ia, gamma_Is, gamma_H, nu, psi,
         size)
 
     # prepare the timespan and savepoints
