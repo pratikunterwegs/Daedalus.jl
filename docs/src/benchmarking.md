@@ -13,7 +13,7 @@ This section shows various benchmarks.
 using Daedalus
 using BenchmarkTools
 
-@benchmark daedalus(time_end=600.0)
+@benchmark daedalus(country="Australia", time_end=600.0)
 ```
 
 ```@example benchmarking_02
@@ -21,7 +21,7 @@ using BenchmarkTools
 using Daedalus
 using BenchmarkTools
 
-@benchmark daedalus(time_end=100.0)
+@benchmark daedalus(country="Australia", time_end=100.0)
 ```
 
 ## Effect of logging $R_t$
@@ -33,7 +33,7 @@ using Daedalus
 using BenchmarkTools
 
 # turn off Rt logging and compare with benchmark above
-@benchmark daedalus(log_rt=false, time_end=600.0)
+@benchmark daedalus(country="Australia", log_rt=false, time_end=600.0)
 ```
 
 ## Reactive events
@@ -47,12 +47,12 @@ using BenchmarkTools
 
 npi = Daedalus.DaedalusStructs.Npi(20000.0, (coef=0.7,));
 
-@benchmark daedalus(r0=5.0, npi=npi, time_end=600.0)
+@benchmark daedalus(country="Australia", r0=5.0, npi=npi, time_end=600.0)
 ```
 
 ```@example benchmarking_reactive_event
 # shorter duration
-@benchmark daedalus(r0=5.0, npi=npi, time_end=100.0)
+@benchmark daedalus(country="Australia", r0=5.0, npi=npi, time_end=100.0)
 ```
 
 ## Timed events
@@ -69,11 +69,11 @@ timed_npi = Daedalus.DaedalusStructs.TimedNpi(
     "three_phase_lockdown"
 )
 
-@benchmark daedalus(r0=3.0, npi=timed_npi, time_end=600.0)
+@benchmark daedalus(country="Australia", r0=3.0, npi=timed_npi, time_end=600.0)
 ```
 
 Timed events do not need $R_t$ logging and can be benchmarked without it.
 
 ```@example benchmarking_timed_event
-@benchmark daedalus(r0=3.0, npi=timed_npi, time_end=600.0, log_rt=false)
+@benchmark daedalus(country="Australia", r0=3.0, npi=timed_npi, time_end=600.0, log_rt=false)
 ```

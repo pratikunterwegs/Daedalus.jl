@@ -7,7 +7,7 @@ using Test
     # Write your tests here.
     @testset "DAEDALUS model" begin
         try
-            daedalus(r0 = 5.0, time_end = 100.0)
+            daedalus(country = "Australia", r0 = 5.0, time_end = 100.0)
             @test true
         catch e
             @test false

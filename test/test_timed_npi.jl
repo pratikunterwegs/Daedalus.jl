@@ -230,6 +230,7 @@ end
         npi = Daedalus.DaedalusStructs.TimedNpi(15.0, 45.0, 0.5, "test_single")
 
         result = Daedalus.daedalus(
+            country = "Australia",
             r0 = 2.0,
             time_end = 80.0,
             increment = 1.0,
@@ -251,6 +252,7 @@ end
         )
 
         result = Daedalus.daedalus(
+            country = "Australia",
             r0 = 2.5,
             time_end = 100.0,
             increment = 1.0,
@@ -267,6 +269,7 @@ end
         npi = Daedalus.DaedalusStructs.TimedNpi(20.0, 40.0, 0.3)
 
         result = Daedalus.daedalus(
+            country = "Australia",
             r0 = 1.8,
             time_end = 60.0,
             npi = npi,
@@ -280,6 +283,7 @@ end
         npi = Daedalus.DaedalusStructs.TimedNpi(10.0, 30.0, 0.5)
 
         result = Daedalus.daedalus(
+            country = "Australia",
             r0 = 2.0,
             time_end = 50.0,
             increment = 1.0,
@@ -296,6 +300,7 @@ end
         npi = Daedalus.DaedalusStructs.TimedNpi(15.0, 35.0, 0.4)
 
         result = Daedalus.daedalus(
+            country = "Australia",
             r0 = 2.0,
             time_end = 50.0,
             increment = 1.0,
@@ -312,6 +317,7 @@ end
         # Complete transmission block (coef = 0)
         npi_block = Daedalus.DaedalusStructs.TimedNpi(10.0, 30.0, 0.0)
         result_block = Daedalus.daedalus(
+            country = "Australia",
             r0 = 3.0,
             time_end = 50.0,
             npi = npi_block
@@ -321,6 +327,7 @@ end
         # No intervention effect (coef = 1)
         npi_none = Daedalus.DaedalusStructs.TimedNpi(10.0, 30.0, 1.0)
         result_none = Daedalus.daedalus(
+            country = "Australia",
             r0 = 3.0,
             time_end = 50.0,
             npi = npi_none
@@ -332,6 +339,7 @@ end
         # NPI starting at time 0
         npi_start = Daedalus.DaedalusStructs.TimedNpi(0.0, 20.0, 0.5)
         result_start = Daedalus.daedalus(
+            country = "Australia",
             r0 = 2.0,
             time_end = 40.0,
             npi = npi_start
@@ -341,6 +349,7 @@ end
         # NPI ending at simulation end
         npi_end = Daedalus.DaedalusStructs.TimedNpi(20.0, 50.0, 0.5)
         result_end = Daedalus.daedalus(
+            country = "Australia",
             r0 = 2.0,
             time_end = 50.0,
             npi = npi_end
@@ -350,6 +359,7 @@ end
         # NPI covering entire simulation
         npi_full = Daedalus.DaedalusStructs.TimedNpi(0.0, 50.0, 0.5)
         result_full = Daedalus.daedalus(
+            country = "Australia",
             r0 = 2.0,
             time_end = 50.0,
             npi = npi_full
@@ -362,6 +372,7 @@ end
     @testset "Basic epidemic comparison" begin
         # Run without intervention
         result_none = Daedalus.daedalus(
+            country = "Australia",
             r0 = 2.5,
             time_end = 100.0,
             increment = 1.0,
@@ -371,6 +382,7 @@ end
         # Run with intervention
         npi = Daedalus.DaedalusStructs.TimedNpi(20.0, 60.0, 0.3)
         result_npi = Daedalus.daedalus(
+            country = "Australia",
             r0 = 2.5,
             time_end = 100.0,
             increment = 1.0,
@@ -401,6 +413,7 @@ end
         npi = Daedalus.DaedalusStructs.Npi(5000.0, (coef = 0.4,))
 
         result = Daedalus.daedalus(
+            country = "Australia",
             r0 = 2.5,
             time_end = 100.0,
             npi = npi
@@ -413,6 +426,7 @@ end
 
     @testset "Model accepts nothing (unchanged behavior)" begin
         result = Daedalus.daedalus(
+            country = "Australia",
             r0 = 2.0,
             time_end = 50.0,
             npi = nothing
@@ -429,6 +443,7 @@ end
         # 0.1 day intervention
         npi = Daedalus.DaedalusStructs.TimedNpi(20.0, 20.1, 0.5)
         result = Daedalus.daedalus(
+            country = "Australia",
             r0 = 2.0,
             time_end = 40.0,
             increment = 0.1,
@@ -441,6 +456,7 @@ end
         # 200 day intervention
         npi = Daedalus.DaedalusStructs.TimedNpi(10.0, 210.0, 0.3)
         result = Daedalus.daedalus(
+            country = "Australia",
             r0 = 2.0,
             time_end = 250.0,
             npi = npi
@@ -458,6 +474,7 @@ end
             start_times, end_times, coefs, "many_phases"
         )
         result = Daedalus.daedalus(
+            country = "Australia",
             r0 = 2.0,
             time_end = 120.0,
             npi = npi
@@ -475,6 +492,7 @@ end
             "alternating"
         )
         result = Daedalus.daedalus(
+            country = "Australia",
             r0 = 2.5,
             time_end = 100.0,
             npi = npi
@@ -486,6 +504,7 @@ end
         # R0=5.0 with 90% reduction
         npi = Daedalus.DaedalusStructs.TimedNpi(5.0, 50.0, 0.1)
         result = Daedalus.daedalus(
+            country = "Australia",
             r0 = 5.0,
             time_end = 80.0,
             npi = npi
@@ -497,6 +516,7 @@ end
         # Intervention starts after epidemic peak likely passed
         npi = Daedalus.DaedalusStructs.TimedNpi(150.0, 180.0, 0.3)
         result = Daedalus.daedalus(
+            country = "Australia",
             r0 = 2.0,
             time_end = 200.0,
             npi = npi

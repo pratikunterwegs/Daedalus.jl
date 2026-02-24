@@ -298,11 +298,6 @@ Construct the initial epidemic state for a named country. Calls
 # Example
 ```julia
 state = initial_state("United Kingdom")
-result = daedalus(
-    initial_state = state,
-    contacts = prepare_contacts("United Kingdom"),
-    cw = worker_contacts("United Kingdom"),
-)
 ```
 """
 function initial_state(country::String)
