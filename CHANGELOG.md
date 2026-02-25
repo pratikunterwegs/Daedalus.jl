@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.2] - 2026-02-25
+
 ### Fixed
 - `prepare_demog(cd::CountryData)` now clamps worker counts to a minimum of 1,
   preventing division-by-zero when the result is used as a scaling denominator.
