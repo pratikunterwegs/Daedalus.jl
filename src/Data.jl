@@ -183,9 +183,13 @@ end
 
 Get the 49-element population vector (4 age groups + 45 worker sectors) for
 any country from a [`DataLoader.CountryData`](@ref) struct.
+
+Worker counts are clamped to a minimum of 1 to avoid division-by-zero when
+this vector is used as a denominator (e.g. in contact-matrix scaling and the
+Rt callback). This matches the `+1` padding applied in `initial_state`.
 """
 function prepare_demog(cd::CountryData)
-    return prepare_demog(cd.demography, cd.workers)
+    return prepare_demog(cd.demography, max.(cd.workers, 1))
 end
 
 """

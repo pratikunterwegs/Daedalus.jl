@@ -34,7 +34,7 @@ using Daedalus
 using Plots
 
 # pump up r0 to get peak within 50 days
-data = daedalus(country="Australia", r0=5.0, time_end=600.0);
+data = daedalus(country="Canada", r0=5.0, time_end=600.0);
 
 # plot exposed group
 times = Daedalus.Outputs.get_times(data)
