@@ -304,7 +304,7 @@ version = "4.1.1"
 deps = ["CSV", "DataFrames", "DiffEqCallbacks", "LinearAlgebra", "OrdinaryDiffEq", "StaticArrays", "Statistics"]
 path = ".."
 uuid = "05fc9732-d2bf-478b-9a56-f88318f7a02f"
-version = "0.0.1"
+version = "0.0.2"
 
 [[deps.DataAPI]]
 git-tree-sha1 = "abe83f3a2f1b857aac70ef8b269080af17764bbe"
