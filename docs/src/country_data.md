@@ -74,7 +74,17 @@ using Daedalus
 result = daedalus(country="United Kingdom", r0=2.5, time_end=600.0)
 ```
 
-The `Data` sub-module also exposes lower-level functions for inspecting or manipulating the country arrays directly:
+You can also pass a [`DataLoader.CountryData`](@ref) struct directly.
+This is useful when you want to pre-fetch or modify country data before running the model:
+
+```@example country_inputs
+# Pre-fetch country data and pass the struct directly
+uk = Daedalus.DataLoader.get_country("United Kingdom")
+result2 = daedalus(country=uk, r0=2.5, time_end=600.0)
+```
+
+The `Data` sub-module also exposes lower-level functions for inspecting or manipulating the country arrays directly.
+Each function accepts either a country name `String` or a `CountryData` struct:
 
 | Function | Returns |
 |---|---|

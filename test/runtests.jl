@@ -14,6 +14,18 @@ using Test
         end
     end
 
+    @testset "daedalus accepts CountryData struct" begin
+        cd = Daedalus.DataLoader.get_country("Australia")
+        result = daedalus(country = cd, r0 = 3.0, time_end = 100.0, log_rt = false)
+        @test length(result.sol.t) == 101
+        @test all(isfinite, result.sol.u[end])
+
+        # result must be identical to string-based call
+        result_str = daedalus(country = "Australia", r0 = 3.0, time_end = 100.0,
+            log_rt = false)
+        @test result.sol.u[end] ≈ result_str.sol.u[end]
+    end
+
     # tests for helper functions
     @testset "Daedalus helpers for β and NGM" begin
         r0 = 1.3
