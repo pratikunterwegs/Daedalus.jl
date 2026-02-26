@@ -157,7 +157,9 @@ function daedalus(;
         end
     end
 
-    # get the solution, ensuring that tstops includes t_vax
+    # get the solution
+    # NOTE: saving at fixed timepoints, some performance can be gained
+    # by interpolating at times from solution later
     ode_solution = solve(ode_problem, callback = cb_set, saveat = savepoints)
 
     # Handle saved values - only reactive NPIs have saved_values
