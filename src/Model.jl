@@ -9,6 +9,7 @@ using StaticArrays
 using .Constants
 using .Ode
 using .Data
+using .DataLoader
 using .Events
 using .Helpers
 using .DaedalusStructs
@@ -20,6 +21,9 @@ Model the progression of a daedalus epidemic with multiple optional vaccination
 strata.
 
 # Arguments
+- `country`: Country to model. Can be:
+  - A `String` country name (e.g. `"Australia"`), looked up via `DataLoader.get_country`
+  - A [`DataLoader.CountryData`](@ref) struct for custom or pre-fetched data
 - `npi`: Non-pharmaceutical intervention. Can be:
   - `Npi`: Reactive NPI that responds to epidemic state (hospitalizations, Rt)
   - `TimedNpi`: Time-limited NPI with predefined start/end times
@@ -30,6 +34,12 @@ strata.
 ## No intervention
 ```julia
 result = daedalus(country="Australia", r0=2.5, time_end=200.0)
+```
+
+## Using a pre-fetched CountryData struct
+```julia
+cd = Daedalus.DataLoader.get_country("Australia")
+result = daedalus(country=cd, r0=2.5, time_end=200.0)
 ```
 
 ## Single-phase time-limited intervention
@@ -59,7 +69,7 @@ result = daedalus(country="Australia", r0=2.5, time_end=200.0, npi=npi)
 ```
 """
 function daedalus(;
-        country::String,
+        country::Union{String, DataLoader.CountryData},
         r0 = 1.3, # manual beta assumes R0 = 1.3, infectious period = 7 days
         sigma = 0.217,
         p_sigma = 0.867,
@@ -77,11 +87,14 @@ function daedalus(;
         time_end::Float64 = 100.0,
         increment::Float64 = 1.0)
 
-    # get all values from country string
-    init_state = initial_state(country)
-    contacts_scaled = prepare_contacts(country)
-    contacts_unscaled = prepare_contacts(country, scaled = false)
-    cw = worker_contacts(country)
+    # resolve country string to CountryData if needed
+    cd = isa(country, String) ? DataLoader.get_country(country) : country
+
+    # get all values from country data
+    init_state = initial_state(cd)
+    contacts_scaled = prepare_contacts(cd)
+    contacts_unscaled = prepare_contacts(cd; scaled = false)
+    cw = worker_contacts(cd)
 
     # calculate beta
     beta = get_beta(
@@ -99,7 +112,7 @@ function daedalus(;
         contacts_unscaled,
         r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
     )
-    demog = SVector{N_TOTAL_GROUPS}(prepare_demog(country))
+    demog = SVector{N_TOTAL_GROUPS}(prepare_demog(cd))
 
     size::Int = N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA
 
