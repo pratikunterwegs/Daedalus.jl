@@ -11,7 +11,10 @@ makedocs(;
         prettyurls = get(ENV, "CI", "false") == "true",
         canonical = "https://pratikunterwegs.github.io/Daedalus.jl",
         edit_link = "main",
-        assets = String[]
+        assets = String[],
+        size_threshold_ignore = [
+            "country_data.md",  # prevent HTML size errors during docs build
+        ],
     ),
     checkdocs = :exports,
     pages = [
