@@ -9,6 +9,7 @@ using StaticArrays
 using .Constants
 using .Ode
 using .Data
+using .DataLoader
 using .Events
 using .Helpers
 using .DaedalusStructs
@@ -20,6 +21,9 @@ Model the progression of a daedalus epidemic with multiple optional vaccination
 strata.
 
 # Arguments
+- `country`: Country to model. Can be:
+  - A `String` country name (e.g. `"Australia"`), looked up via `DataLoader.get_country`
+  - A [`DataLoader.CountryData`](@ref) struct for custom or pre-fetched data
 - `npi`: Non-pharmaceutical intervention. Can be:
   - `Npi`: Reactive NPI that responds to epidemic state (hospitalizations, Rt)
   - `TimedNpi`: Time-limited NPI with predefined start/end times
@@ -29,14 +33,20 @@ strata.
 
 ## No intervention
 ```julia
-result = daedalus(r0=2.5, time_end=200.0)
+result = daedalus(country="Australia", r0=2.5, time_end=200.0)
+```
+
+## Using a pre-fetched CountryData struct
+```julia
+cd = Daedalus.DataLoader.get_country("Australia")
+result = daedalus(country=cd, r0=2.5, time_end=200.0)
 ```
 
 ## Single-phase time-limited intervention
 ```julia
 # 30% transmission reduction from day 15 to day 45
 npi = TimedNpi(15.0, 45.0, 0.7, "moderate_lockdown")
-result = daedalus(r0=2.5, time_end=200.0, npi=npi)
+result = daedalus(country="Australia", r0=2.5, time_end=200.0, npi=npi)
 ```
 
 ## Multi-phase time-limited intervention
@@ -48,21 +58,18 @@ npi = TimedNpi(
     [0.7, 0.3, 0.5],     # coefficients
     "three_phase_strategy"
 )
-result = daedalus(r0=2.5, time_end=200.0, npi=npi)
+result = daedalus(country="Australia", r0=2.5, time_end=200.0, npi=npi)
 ```
 
 ## Reactive (state-dependent) intervention
 ```julia
 # Triggers when hospitalizations reach threshold, deactivates when Rt < 1
 npi = Npi(5000.0, (coef=0.4,))
-result = daedalus(r0=2.5, time_end=200.0, npi=npi)
+result = daedalus(country="Australia", r0=2.5, time_end=200.0, npi=npi)
 ```
 """
 function daedalus(;
-        initial_state = australia_initial_state(australia_demography()),
-        demography = prepare_demog(),
-        contacts = [prepare_contacts(), prepare_contacts()], # sim two settings, can be any N
-        cw = worker_contacts(),
+        country::Union{String, DataLoader.CountryData},
         r0 = 1.3, # manual beta assumes R0 = 1.3, infectious period = 7 days
         sigma = 0.217,
         p_sigma = 0.867,
@@ -80,15 +87,17 @@ function daedalus(;
         time_end::Float64 = 100.0,
         increment::Float64 = 1.0)
 
-    # total contacts, flexible for length of `contacts`
-    # `first` used as sum in vector
-    total_contacts = first(sum(contacts, dims = [1, 2]))
-    settings = length(contacts)
-    contacts_array = SArray{Tuple{N_TOTAL_GROUPS, N_TOTAL_GROUPS, settings}}(stack(contacts))
+    # resolve country string to CountryData if needed
+    cd = isa(country, String) ? DataLoader.get_country(country) : country
+
+    # get all values from country data
+    init_state = initial_state(cd)
+    contacts_unscaled = total_contacts(prepare_contacts(cd; scaled = false))
+    cw = worker_contacts(cd)
 
     # calculate beta
     beta = get_beta(
-        total_contacts,
+        contacts_unscaled,
         r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
     )
 
@@ -99,15 +108,17 @@ function daedalus(;
 
     # NGM
     ngm = get_ngm(
-        total_contacts,
+        contacts_unscaled,
         r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
     )
-    demog = SVector{N_TOTAL_GROUPS}(demography)
+    demog = SVector{N_TOTAL_GROUPS}(prepare_demog(cd))
 
     size::Int = N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA
 
     # combined parameters into an array; this is not recommended but this cannot be a tuple
     # using a StaticArray for the `contacts` helps cut computation as this is assigned only once(?)
+    contacts_array = contacts3d(cd)
+    settings = get_settings(cd)
     parameters::Params = Params(contacts_array, settings, ngm, demog, cw,
         beta, beta, sigma, p_sigma, epsilon, rho, eta, omega, omega,
         gamma_Ia, gamma_Is, gamma_H, nu, psi,
@@ -118,12 +129,12 @@ function daedalus(;
     savepoints = 0.0:increment:time_end
 
     # add Rt compartment at end
-    initial_state = reshape(initial_state, length(initial_state))
-    initial_state = [initial_state; r0]
+    init_state = reshape(init_state, length(init_state))
+    init_state = [init_state; r0]
 
     # define the ode problem
     ode_problem = ODEProblem(
-        daedalus_ode!, initial_state, timespan, parameters
+        daedalus_ode!, init_state, timespan, parameters
     )
 
     # check if NPI is passed and define callbacks accordingly
@@ -161,7 +172,9 @@ function daedalus(;
         end
     end
 
-    # get the solution, ensuring that tstops includes t_vax
+    # get the solution
+    # NOTE: saving at fixed timepoints, some performance can be gained
+    # by interpolating at times from solution later
     ode_solution = solve(ode_problem, callback = cb_set, saveat = savepoints)
 
     # Handle saved values - only reactive NPIs have saved_values

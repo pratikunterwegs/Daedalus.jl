@@ -11,17 +11,20 @@ makedocs(;
         prettyurls = get(ENV, "CI", "false") == "true",
         canonical = "https://pratikunterwegs.github.io/Daedalus.jl",
         edit_link = "main",
-        assets = String[]
+        assets = String[],
+        size_threshold_ignore = [
+            "country_data.md",  # prevent HTML size errors during docs build
+        ]
     ),
     checkdocs = :exports,
     pages = [
         "Home" => "index.md",
+        "Implementing interventions" => "npis.md",
+        "Benchmarking" => "benchmarking.md",
         "Country and pathogen data" => "country_data.md",
-        "Index" => "pkg_index.md",
-        "Function Reference" => "reference.md",
-        "Reactive NPIs" => "npis.md",
         "Implementing reactive events" => "musings.md",
-        "Benchmarking" => "benchmarking.md"
+        "Index" => "pkg_index.md",
+        "Function Reference" => "reference.md"
     ]
 )
 

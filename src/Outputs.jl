@@ -32,7 +32,7 @@ all age and vaccination groups:
 # Examples
 
 ```julia
-output = daedalus(time_end=365.0)
+output = daedalus(country="Australia", time_end=365.0)
 
 # Daily hospitalizations
 daily_H = get_values(output, "H", 1)

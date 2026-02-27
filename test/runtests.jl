@@ -15,4 +15,6 @@ using Test
 
     # Include output processing tests
     include("test_outputs.jl")
+
+    include("test_countries.jl")
 end

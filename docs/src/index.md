@@ -34,7 +34,7 @@ using Daedalus
 using Plots
 
 # pump up r0 to get peak within 50 days
-data = daedalus(r0=5.0, time_end=600.0);
+data = daedalus(country="Canada", r0=5.0, time_end=600.0);
 
 # plot exposed group
 times = Daedalus.Outputs.get_times(data)
@@ -59,25 +59,14 @@ ylabel!("Rt")
 
 ## Running Daedalus for a specific country
 
-Country-specific demography, contact patterns, and workforce data are available via `DataLoader`. Pass the country name string to `initial_state`, `prepare_contacts`, and `worker_contacts` to build the model inputs for any supported country.
+Pass a country name string directly to `daedalus` to use country-specific demography, contact patterns, and workforce data.
 
 ```@example uk_daedalus
 using Daedalus
 using Plots
 
-# Build UK-specific inputs
-state = Daedalus.Data.initial_state("United Kingdom")
-contacts = Daedalus.Data.prepare_contacts("United Kingdom")
-cw = Daedalus.Data.worker_contacts("United Kingdom")
-
 # Run the model using UK demography and contact patterns
-data_uk = daedalus(
-    initial_state = state,
-    contacts = contacts,
-    cw = cw,
-    r0 = 2.5,
-    time_end = 600.0
-)
+data_uk = daedalus(country="United Kingdom", r0=2.5, time_end=600.0)
 
 times_uk = Daedalus.Outputs.get_times(data_uk)
 exposed_uk = Daedalus.Outputs.get_values(data_uk, "E", 1)
@@ -88,7 +77,6 @@ plot!(times_uk, hosp_uk, label = "hospitalised")
 xlabel!("Time (days)")
 ylabel!("# individuals")
 title!("United Kingdom — SEIR dynamics")
-
 ```
 
 ```@example uk_daedalus

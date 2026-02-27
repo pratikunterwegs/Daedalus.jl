@@ -7,9 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `daedalus` now accepts `country` as either a `String` or a `DataLoader.CountryData` struct; a `String` is resolved to `CountryData` via `DataLoader.get_country` at the start of the function, making both call styles equivalent
+
+## [0.0.2] - 2026-02-25
+
+### Fixed
+- `prepare_demog(cd::CountryData)` now clamps worker counts to a minimum of 1,
+  preventing division-by-zero when the result is used as a scaling denominator.
+  30 countries (Australia, Belgium, Brunei, Cambodia, Chile, China, Costa Rica,
+  Cyprus, Estonia, Finland, Hong Kong, Iceland, Japan, Kazakhstan, Laos, Latvia,
+  Luxembourg, Malaysia, Malta, Mexico, Morocco, Myanmar, New Zealand, Portugal,
+  Romania, Rwanda, Singapore, Slovenia, Switzerland, Tunisia) had at least one
+  sector with zero workers in the data, causing `Inf` in the scaled contact
+  matrix, which propagated to `NaN` in the ODE step-size calculation and
+  immediate solver exit with `dt_NaN` warnings.
+
+### Changed
+- `daedalus` now requires a `country` string directly instead of separate `initial_state`, `contacts`, and `cw` arguments; all tests, examples, and documentation updated accordingly
+- Simplified UK example in `docs/src/index.md` to use `daedalus(country="United Kingdom", ...)`
+- Updated `docs/src/country_data.md` to reflect that `daedalus` accepts `country` directly
+
 ### Added
 - Documentation page for country and pathogen data (`docs/src/country_data.md`)
-- UK example in `docs/src/index.md` showing how to run the model with country-specific inputs
 - `DataLoader` module added to function reference autodocs
 - Basic model and helper tests extracted into `test/test_basic.jl`
 

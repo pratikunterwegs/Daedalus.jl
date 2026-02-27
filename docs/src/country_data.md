@@ -66,7 +66,25 @@ delta
 
 ## Preparing country inputs for the model
 
-The `Data` sub-module provides convenience functions that accept a country name string or a `CountryData` struct and return the arrays expected by [`daedalus`](@ref).
+Pass a country name string directly to [`daedalus`](@ref) to run the model with country-specific demography, contacts, and workforce data:
+
+```@example country_inputs
+using Daedalus
+
+result = daedalus(country="United Kingdom", r0=2.5, time_end=600.0)
+```
+
+You can also pass a [`DataLoader.CountryData`](@ref) struct directly.
+This is useful when you want to pre-fetch or modify country data before running the model:
+
+```@example country_inputs
+# Pre-fetch country data and pass the struct directly
+uk = Daedalus.DataLoader.get_country("United Kingdom")
+result2 = daedalus(country=uk, r0=2.5, time_end=600.0)
+```
+
+The `Data` sub-module also exposes lower-level functions for inspecting or manipulating the country arrays directly.
+Each function accepts either a country name `String` or a `CountryData` struct:
 
 | Function | Returns |
 |---|---|
@@ -74,11 +92,3 @@ The `Data` sub-module provides convenience functions that accept a country name 
 | `prepare_contacts(country)` | Scaled 49×49 contact matrix |
 | `worker_contacts(country)` | Per-capita within-sector contact rates (length-45 vector) |
 | `prepare_demog(country)` | 49-element population vector |
-
-```@example country_inputs
-using Daedalus
-
-state = Daedalus.Data.initial_state("United Kingdom")
-contacts = Daedalus.Data.prepare_contacts("United Kingdom")
-cw = Daedalus.Data.worker_contacts("United Kingdom")
-```
