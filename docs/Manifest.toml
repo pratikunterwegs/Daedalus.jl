@@ -304,7 +304,7 @@ version = "4.1.1"
 deps = ["CSV", "DataFrames", "DiffEqCallbacks", "LinearAlgebra", "OrdinaryDiffEq", "StaticArrays", "Statistics"]
 path = ".."
 uuid = "05fc9732-d2bf-478b-9a56-f88318f7a02f"
-version = "0.0.2"
+version = "0.0.3"
 
 [[deps.DataAPI]]
 git-tree-sha1 = "abe83f3a2f1b857aac70ef8b269080af17764bbe"
@@ -1838,9 +1838,9 @@ version = "0.1.0"
 
 [[deps.SciMLBase]]
 deps = ["ADTypes", "Accessors", "Adapt", "ArrayInterface", "CommonSolve", "ConstructionBase", "Distributed", "DocStringExtensions", "EnumX", "FunctionWrappersWrappers", "IteratorInterfaceExtensions", "LinearAlgebra", "Logging", "Markdown", "Moshi", "PreallocationTools", "PrecompileTools", "Preferences", "Printf", "RecipesBase", "RecursiveArrayTools", "Reexport", "RuntimeGeneratedFunctions", "SciMLLogging", "SciMLOperators", "SciMLPublic", "SciMLStructures", "StaticArraysCore", "Statistics", "SymbolicIndexingInterface"]
-git-tree-sha1 = "add26cd50b9b3b330ef6144baa2eaa498b981f8b"
+git-tree-sha1 = "38b96c399e611517550dc1ea406a8851a9bba0c5"
 uuid = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
-version = "2.145.0"
+version = "2.146.0"
 
     [deps.SciMLBase.extensions]
     SciMLBaseChainRulesCoreExt = "ChainRulesCore"

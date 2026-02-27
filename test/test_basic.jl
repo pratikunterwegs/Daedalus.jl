@@ -29,14 +29,16 @@ end
     gamma_Ia = 0.476
     gamma_Is = 0.25
 
+    cm = Daedalus.DataLoader.get_country("Australia").contact_matrix
+
     beta = Daedalus.Helpers.get_beta(
-        Daedalus.Data.australia_contacts(),
+        cm,
         r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
     )
     @test typeof(beta) == Float64
 
     ngm = Daedalus.Helpers.get_ngm(
-        Daedalus.Data.australia_contacts(),
+        cm,
         r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
     )
     lambda = maximum(eigen(ngm).values)
