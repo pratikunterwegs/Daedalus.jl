@@ -157,22 +157,57 @@ function prepare_contacts(cd::CountryData; scaled = true)
     end
 end
 
+"""
+    total_contacts(contacts) -> Matrix{Float64}
+
+Reduce a contact matrix representation to a single aggregated 2D matrix.
+
+When `contacts` is a `Vector{Matrix{Float64}}` (one matrix per closure setting),
+the matrices are summed element-wise to produce the total contact matrix. When
+`contacts` is already a single `Matrix{Float64}`, it is returned unchanged.
+
+# Arguments
+- `contacts`: Either a `Vector{Matrix{Float64}}` or a `Matrix{Float64}`
+
+# Returns
+A single `Matrix{Float64}` representing total contacts across all settings.
+"""
 function total_contacts(contacts::Union{
         Vector{Matrix{Float64}}, Matrix{Float64}})::Matrix{Float64}
     isa(contacts, Vector) ? sum(contacts) : contacts
 end
 
 """
-    contacts3d(cd::CountryData) -> SArray
+    contacts3d(cd::CountryData) -> Array{Float64, 3}
+
+Return the scaled contact matrices for a country as a single 3D array of size
+`(N_TOTAL_GROUPS, N_TOTAL_GROUPS, K)`, where `K` is the number of closure
+settings (economic contact scenarios).
+
+Calls `prepare_contacts(cd)` and normalises the result into 3D form:
+- If the country has multiple contact matrices (one per closure setting),
+  they are stacked along the third dimension to give shape `(49, 49, K)`.
+- If the country has a single contact matrix, it is reshaped to `(49, 49, 1)`
+  so the return type is always a 3D array regardless of `K`.
+
+The third dimension of the returned array is the one contracted by
+`weighted_slice_sum!` in the ODE force-of-infection calculation.
+
+# Arguments
+- `cd::CountryData`: Country data struct from `DataLoader`
+
+# Returns
+An `Array{Float64, 3}` of size `(N_TOTAL_GROUPS, N_TOTAL_GROUPS, K)`.
 """
-function contacts3d(cd::CountryData)::SArray
+function contacts3d(cd::CountryData)::Array{Float64, 3}
     cm = prepare_contacts(cd)
 
     if isa(cm, Vector)
         settings = length(cm)
-        return SArray{Tuple{N_TOTAL_GROUPS, N_TOTAL_GROUPS, settings}}(stack(cm))
+        return stack(cm) # type is Array{Float64, 3} with dims 49, 49, K
     else
-        return SArray{Tuple{N_TOTAL_GROUPS, N_TOTAL_GROUPS, 1}}(cm)
+        dim_main = first(size(cm))
+        return reshape(cm, dim_main, dim_main, 1) # K = 1
     end
 end
 

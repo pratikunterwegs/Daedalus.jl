@@ -17,7 +17,8 @@ A mutable struct that holds the parameters for the DAEDALUS model.
     epidemiological parameters.
 """
 mutable struct Params
-    contacts::StaticArray
+    contacts::Array{Float64, 3}
+    cm_temp::Matrix{Float64}
     settings::Int
     ngm::StaticArray
     demography::StaticVector

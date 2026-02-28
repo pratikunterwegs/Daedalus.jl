@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Docstring for `Helpers.weighted_slice_sum!` explaining the tensor contraction algorithm, arguments, and performance notes
+- Docstring for `Data.total_contacts` explaining the dispatch on single vs. vector-of-matrices input
+- Expanded docstring for `Data.contacts3d` explaining the 3D stacking, the `K=1` reshape fallback, and the role of the third dimension in the ODE
+- Tests for `Helpers.weighted_slice_sum!` covering unit weights, slice selection, scalar scaling, zero weights, in-place overwrite, and agreement with a reference loop
+
 ## [0.0.3] - 2026-02-27
 
 ### Changed

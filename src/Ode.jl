@@ -39,14 +39,14 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
 
     # calculate new infections and re-infections
     community_infectious = sum(Is .+ Ia .* p.epsilon, dims = 2)
-    cm_scaling = ones(p.settings) # NOTE: placeholder for future operations
 
     # NOTE: this can probably be cleaned up
-    tot_cm = sum(
-        stack([cm_scaling[i] .* p.contacts[:, :, i] for i in 1:p.settings]),
-        dims = 3)[:, :, 1]
+    # NOTE: this is inefficient and should be refactored so that p.cm_temp
+    # is modified only when NPIs fire. this is a proof-of-concept.
+    cm_scaling = ones(p.settings) # NOTE: placeholder for future operations
+    weighted_slice_sum!(p.contacts, cm_scaling, p.cm_temp)
 
-    foi = p.beta_now * tot_cm * community_infectious
+    foi = p.beta_now * p.cm_temp * community_infectious
 
     # NOTE: element-wise multiplication
     new_I = S .* foi
