@@ -20,6 +20,7 @@ makedocs(;
     pages = [
         "Home" => "index.md",
         "Implementing interventions" => "npis.md",
+        "Multiple contact settings" => "settings.md",
         "Benchmarking" => "benchmarking.md",
         "Country and pathogen data" => "country_data.md",
         "Implementing reactive events" => "musings.md",

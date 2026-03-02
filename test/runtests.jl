@@ -19,4 +19,6 @@ using Test
     include("test_countries.jl")
 
     include("test_weighted_slice_sum.jl")
+
+    include("test_settings.jl")
 end

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.0.4] - 2026-03-02
 
+### Added
+- Documentation page `docs/src/settings.md` explaining the multiple-contact-settings feature: how to assign a `Vector{Matrix{Float64}}` to `CountryData.contact_matrix`, how `contacts3d` stacks them into a 3D array, and how beta calibration uses `total_contacts` (sum of all matrices)
+- Tests for multiple contact settings: `get_settings` count, `contacts3d` shape, `total_contacts` element-wise sum, model execution with two settings, and calibration-equivalence check (two equal settings produces the same epidemic as one setting for the same R0)
+
 ### Fixed
 - Lowered `Statistics` and `LinearAlgebra` compat bounds to `1.10.0` (matching Julia 1.10 LTS stdlib versions) so the package resolves correctly on Julia 1.10 LTS
 
