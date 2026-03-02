@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.0.4] - 2026-03-02
 
 ### Fixed
-- Lowered `Statistics` compat bound from `1.11.1` to `1.10.0` so the package resolves correctly on Julia 1.10 LTS
+- Lowered `Statistics` and `LinearAlgebra` compat bounds to `1.10.0` (matching Julia 1.10 LTS stdlib versions) so the package resolves correctly on Julia 1.10 LTS
 
 ### Changed
 
