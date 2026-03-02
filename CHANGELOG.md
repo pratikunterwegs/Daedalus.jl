@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.0.4] - 2026-03-02
 
+### Fixed
+- Lowered `Statistics` compat bound from `1.11.1` to `1.10.0` so the package resolves correctly on Julia 1.10 LTS
+
 ### Changed
 
 - `CountryData` struct now accepts a `Vector` of contact matrices as `Matrix{Float64}` for multiple contact settings. Helper functions process this list, or a single `Matrix`, to give total contacts where needed including `Helpers.get_beta` and `Helpers.get_ngm`.
