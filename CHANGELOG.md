@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.4] - 2026-03-02
+
 ### Added
 - Docstring for `Helpers.weighted_slice_sum!` explaining the tensor contraction algorithm, arguments, and performance notes
 - Docstring for `Data.total_contacts` explaining the dispatch on single vs. vector-of-matrices input
