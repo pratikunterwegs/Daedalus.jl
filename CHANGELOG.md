@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.0.4] - 2026-03-02
 
+### Changed
+
+- `CountryData` struct now accepts a `Vector` of contact matrices as `Matrix{Float64}` for multiple contact settings. Helper functions process this list, or a single `Matrix`, to give total contacts where needed including `Helpers.get_beta` and `Helpers.get_ngm`.
+- Moved away from using `StaticArrays` for contact matrices as operating on them was slower than using regular arrays.
+
 ### Added
 - Docstring for `Helpers.weighted_slice_sum!` explaining the tensor contraction algorithm, arguments, and performance notes
 - Docstring for `Data.total_contacts` explaining the dispatch on single vs. vector-of-matrices input
