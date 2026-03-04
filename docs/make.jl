@@ -14,12 +14,13 @@ makedocs(;
         assets = String[],
         size_threshold_ignore = [
             "country_data.md",  # prevent HTML size errors during docs build
-        ],
+        ]
     ),
     checkdocs = :exports,
     pages = [
         "Home" => "index.md",
         "Implementing interventions" => "npis.md",
+        "Multiple contact settings" => "settings.md",
         "Benchmarking" => "benchmarking.md",
         "Country and pathogen data" => "country_data.md",
         "Implementing reactive events" => "musings.md",

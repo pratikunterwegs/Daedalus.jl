@@ -54,7 +54,7 @@ using Test
         gamma_Is = 0.25
 
         ngm = Daedalus.Helpers.get_ngm(
-            Daedalus.Data.australia_contacts(),
+            Daedalus.DataLoader.get_country("Australia").contact_matrix,
             r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
         )
 
@@ -73,7 +73,7 @@ using Test
         Random.seed!(123)
 
         # Get the full contact matrix
-        contacts = Daedalus.Data.prepare_contacts(scaled = false)
+        contacts = Daedalus.Data.prepare_contacts("Australia"; scaled = false)
 
         # Get NGM parameters
         r0 = 2.5

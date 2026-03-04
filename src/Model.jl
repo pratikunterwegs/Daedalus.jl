@@ -69,7 +69,7 @@ result = daedalus(country="Australia", r0=2.5, time_end=200.0, npi=npi)
 ```
 """
 function daedalus(;
-        country::Union{String, DataLoader.CountryData},
+        country::Union{String, DataLoader.CountryData} = "Canada",
         r0 = 1.3, # manual beta assumes R0 = 1.3, infectious period = 7 days
         sigma = 0.217,
         p_sigma = 0.867,
@@ -92,8 +92,7 @@ function daedalus(;
 
     # get all values from country data
     init_state = initial_state(cd)
-    contacts_scaled = prepare_contacts(cd)
-    contacts_unscaled = prepare_contacts(cd; scaled = false)
+    contacts_unscaled = total_contacts(prepare_contacts(cd; scaled = false))
     cw = worker_contacts(cd)
 
     # calculate beta
@@ -118,8 +117,12 @@ function daedalus(;
 
     # combined parameters into an array; this is not recommended but this cannot be a tuple
     # using a StaticArray for the `contacts` helps cut computation as this is assigned only once(?)
-    parameters = Params(contacts_scaled, ngm, demog, cw, beta, beta, sigma, p_sigma,
-        epsilon, rho, eta, omega, omega, gamma_Ia, gamma_Is, gamma_H, nu, psi,
+    contacts_array = contacts3d(cd)
+    settings = get_settings(cd)
+    cm_temp::Matrix{Float64} = ones(N_TOTAL_GROUPS, N_TOTAL_GROUPS)
+    parameters::Params = Params(contacts_array, cm_temp, settings, ngm, demog,
+        cw, beta, beta, sigma, p_sigma, epsilon, rho, eta, omega, omega,
+        gamma_Ia, gamma_Is, gamma_H, nu, psi,
         size)
 
     # prepare the timespan and savepoints

@@ -7,6 +7,7 @@ using ..DaedalusStructs
 using ..Helpers
 
 using LinearAlgebra
+using StaticArrays
 
 """
     daedalus_ode!(du, u, p, t)
@@ -37,8 +38,15 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
     R = @view U[:, iR, :]
 
     # calculate new infections and re-infections
-    community_infectious = sum(Is .+ Ia * p.epsilon, dims = 2)
-    foi = p.beta_now * p.contacts * community_infectious
+    community_infectious = sum(Is .+ Ia .* p.epsilon, dims = 2)
+
+    # NOTE: this can probably be cleaned up
+    # NOTE: this is inefficient and should be refactored so that p.cm_temp
+    # is modified only when NPIs fire. this is a proof-of-concept.
+    cm_scaling = ones(p.settings) # NOTE: placeholder for future operations
+    weighted_slice_sum!(p.contacts, cm_scaling, p.cm_temp)
+
+    foi = p.beta_now * p.cm_temp * community_infectious
 
     # NOTE: element-wise multiplication
     new_I = S .* foi
@@ -88,6 +96,9 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
 
     # change in dead
     @. dD = p.omega_now .* H
+
+    # Rt is updated by callbacks; keep its derivative zero between updates
+    du[end] = 0.0
 end
 
 end

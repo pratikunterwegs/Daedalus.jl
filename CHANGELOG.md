@@ -7,8 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.4] - 2026-03-02
+
+### Added
+- Documentation page `docs/src/settings.md` explaining the multiple-contact-settings feature: how to assign a `Vector{Matrix{Float64}}` to `CountryData.contact_matrix`, how `contacts3d` stacks them into a 3D array, and how beta calibration uses `total_contacts` (sum of all matrices)
+- Tests for multiple contact settings: `get_settings` count, `contacts3d` shape, `total_contacts` element-wise sum, model execution with two settings, and calibration-equivalence check (two equal settings produces the same epidemic as one setting for the same R0)
+
+### Fixed
+- Lowered `Statistics` and `LinearAlgebra` compat bounds to `1.10.0` (matching Julia 1.10 LTS stdlib versions) so the package resolves correctly on Julia 1.10 LTS
+
+### Changed
+
+- `CountryData` struct now accepts a `Vector` of contact matrices as `Matrix{Float64}` for multiple contact settings. Helper functions process this list, or a single `Matrix`, to give total contacts where needed including `Helpers.get_beta` and `Helpers.get_ngm`.
+- Moved away from using `StaticArrays` for contact matrices as operating on them was slower than using regular arrays.
+
+### Added
+- Docstring for `Helpers.weighted_slice_sum!` explaining the tensor contraction algorithm, arguments, and performance notes
+- Docstring for `Data.total_contacts` explaining the dispatch on single vs. vector-of-matrices input
+- Expanded docstring for `Data.contacts3d` explaining the 3D stacking, the `K=1` reshape fallback, and the role of the third dimension in the ODE
+- Tests for `Helpers.weighted_slice_sum!` covering unit weights, slice selection, scalar scaling, zero weights, in-place overwrite, and agreement with a reference loop
+
+## [0.0.3] - 2026-02-27
+
 ### Changed
 - `daedalus` now accepts `country` as either a `String` or a `DataLoader.CountryData` struct; a `String` is resolved to `CountryData` via `DataLoader.get_country` at the start of the function, making both call styles equivalent
+- Updated `test/test_basic.jl` and `test/test_eigenvalue.jl` to replace removed `Data.australia_contacts()` calls with `DataLoader.get_country("Australia").contact_matrix`; replaced zero-arg `Data.prepare_contacts()` call with `Data.prepare_contacts("Australia")`
 
 ## [0.0.2] - 2026-02-25
 
@@ -31,6 +54,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Documentation page for country and pathogen data (`docs/src/country_data.md`)
 - `DataLoader` module added to function reference autodocs
+- Basic model and helper tests extracted into `test/test_basic.jl`
+
+### Fixed
+- Added explicit `du[end] = 0.0` in `daedalus_ode!` to prevent undefined Rt derivative between callback updates
+- Changed `Ia * p.epsilon` to `Ia .* p.epsilon` in ODE for consistency with broadcasting conventions
+- Removed `cm_scaling .* p.contacts` StaticArrays broadcasting failure; replaced with `sum(p.contacts, dims=3)[:,:,1]`
 
 ## [0.0.1] - 2026-02-23
 

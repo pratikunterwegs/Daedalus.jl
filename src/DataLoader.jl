@@ -19,13 +19,16 @@ const DATA_DIR = joinpath(@__DIR__, "data")
 
 Demographic and economic data for a single country, matching the structure of
 the `country_data` list in the R package `{daedalus.data}`.
+
+This struct is mutable to allow reassigning values to examine different
+    scenarios.
 """
-struct CountryData
-    demography::Vector{Float64}       # 4 age groups: 0-4, 5-19, 20-64, 65+
-    contact_matrix::Matrix{Float64}   # 4×4 social contacts between age groups
-    workers::Vector{Int}              # 45 economic sectors
-    gva::Vector{Float64}              # 45 sectors, million USD/day
-    hospital_capacity::Float64        # spare pandemic hospital beds
+mutable struct CountryData
+    demography::Vector{Float64} # 4 age groups: 0-4, 5-19, 20-64, 65+
+    contact_matrix::Union{Matrix{Float64}, Vector{Matrix{Float64}}} # matrix or list of matrices
+    workers::Vector{Int} # 45 economic sectors
+    gva::Vector{Float64} # 45 sectors, million USD/day
+    hospital_capacity::Float64 # spare pandemic hospital beds
 end
 
 """
@@ -33,8 +36,11 @@ end
 
 Epidemiological parameters for a single pathogen, matching the structure of
 `infection_data` in the R package `{daedalus.data}`.
+
+This struct is mutable to allow reassigning values to examine different
+    scenarios.
 """
-struct InfectionData
+mutable struct InfectionData
     r0::Float64
     sigma::Float64
     p_sigma::Float64

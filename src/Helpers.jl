@@ -1,7 +1,7 @@
 
 module Helpers
 
-export get_beta, get_ngm, sum_by_age, dominant_eigenvalue
+export get_beta, get_ngm, sum_by_age, dominant_eigenvalue, weighted_slice_sum!
 
 using ..Constants
 
@@ -187,6 +187,35 @@ function dominant_eigenvalue(A::AbstractMatrix;
 
     # If we reach here, convergence was not achieved, but return best estimate
     return λ
+end
+
+"""
+    weighted_slice_sum!(X, v, result)
+
+Compute the weighted sum of 2D slices of a 3D array in-place, writing the
+result into `result`.
+
+Mathematically: `result[m, k] = Σᵢ X[m, k, i] * v[i]`
+
+This is a tensor contraction over the third dimension of `X`, equivalent to a
+matrix-vector product after reshaping. `X` is reinterpreted (without copying)
+as a `(M*K) × N` matrix whose columns are the flattened slices `X[:,:,i]`;
+BLAS `gemv` then computes the weighted sum in a single call.
+
+# Arguments
+- `X::Array{T,3}`: Three-dimensional input array of size `(M, K, N)`
+- `v::Vector{T}`: Weight vector of length `N`; element `v[i]` scales slice `X[:,:,i]`
+- `result::Array{T,2}`: Pre-allocated output array of size `(M, K)`; overwritten in-place
+
+# Notes
+- `reshape` and `vec` are O(1) view operations — no data is copied.
+- Efficient for large `M`, `K`. For small `N` (e.g. `N_VACCINE_STRATA = 2`),
+  the BLAS dispatch overhead may dominate; a plain `@inbounds @simd` loop can
+  be faster in that regime.
+"""
+function weighted_slice_sum!(X::Array{T, 3}, v::Vector{T}, result::Array{T, 2}) where {T}
+    M, K, N = size(X)
+    mul!(vec(result), reshape(X, M * K, N), v)
 end
 
 end
