@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Multi-parameter run support: `daedalus()` now accepts `r0` as a `Vector{Float64}` to run the model with multiple R0 values in a single call
+- Multi-threaded execution: New `n_threads` parameter (default `1`) enables parallel ODE solving across multiple r0 values using `Base.Threads`
+- Helper function `prepare_shared_data()` for extracting shared computation (country data, contacts, demographics) that is computed once and reused across parameter sets
+- Internal function `daedalus_internal_multi()` for orchestrating multi-run ODE solving with efficient problem reuse via `SciMLBase.remake()`
+- Comprehensive test suite `test/test_multi_runs.jl` covering: scalar vs. vector r0, multi-threading correctness, parameter preservation, edge cases, and backward compatibility
+
+### Changed
+- `daedalus()` return type now differs based on input: scalar r0 returns single `NamedTuple`, vector r0 returns `Vector{NamedTuple}` where each result includes a `.r0` field recording the parameter value
+
 ## [0.0.4] - 2026-03-02
 
 ### Added
