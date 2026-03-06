@@ -14,7 +14,9 @@ using StaticArrays
     )
 Calculate the transmission rate `beta` given the contact matrix and other parameters.
 """
-function get_beta(cm, r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is)
+function get_beta(cm::Matrix{Float64}, r0::Union{Float64, Vector{Float64}},
+        sigma::Float64, p_sigma::Float64, epsilon::Float64,
+        gamma_Ia::Float64, gamma_Is::Float64)
     n_groups = size(cm)[1]
     sigma_1 = sigma * (1.0 - p_sigma)
     sigma_2 = sigma * p_sigma
@@ -43,25 +45,23 @@ function get_beta(cm, r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is)
 
     r0a = maximum(real(eigen(ngm).values))
 
-    beta = r0 / r0a
+    beta = r0 ./ r0a
 
     return beta
 end
 
 """
     get_ngm(
-        cm, r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
+        cm, beta, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
     )
 Calculate the next-generation matrix (NGM) given the contact matrix and other parameters.
 """
-function get_ngm(cm, r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is)
+function get_ngm(cm::Matrix{Float64}, beta::Float64,
+        sigma::Float64, p_sigma::Float64, epsilon::Float64,
+        gamma_Ia::Float64, gamma_Is::Float64)
     n_groups = size(cm)[1]
     sigma_1 = sigma * (1.0 - p_sigma)
     sigma_2 = sigma * p_sigma
-
-    beta = get_beta(
-        cm, r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
-    )
 
     foi_a = epsilon * beta * cm
     foi_s = beta * cm
@@ -86,6 +86,14 @@ function get_ngm(cm, r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is)
     ngm = f_mat * v_inv[:, 1:n_groups]
 
     return SMatrix{n_groups, n_groups}(ngm)
+end
+
+function get_ngm(cm::Matrix{Float64}, beta::Vector{Float64},
+        sigma::Float64, p_sigma::Float64, epsilon::Float64,
+        gamma_Ia::Float64, gamma_Is::Float64)
+    return [get_ngm(cm, beta_i, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is)
+            for
+            beta_i in beta]
 end
 
 """
