@@ -162,7 +162,7 @@ function make_rt_logger(savepoints)
         rt = Helpers.dominant_eigenvalue(
             ngm_susc, v_init = v_prev, max_iter = 100, tol = 1e-5)
 
-        integrator.u[iRt] = rt # only logged here
+        integrator.u[iRt] = rt # only logged here, use explicit index rather than end
     end
 
     pstcb_rt = PresetTimeCallback(savepoints, affect!)
