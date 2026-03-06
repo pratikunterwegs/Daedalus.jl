@@ -78,24 +78,29 @@ results = daedalus(country="Australia", r0=[1.0, 2.0, 3.0], time_end=200.0, n_th
 """
 
 """
-    prepare_shared_data(cd::DataLoader.CountryData, time_end::Float64, increment::Float64, log_rt::Bool)
+    prepare_shared_data(cd::DataLoader.CountryData, time_end::Float64, increment::Float64)
 
 Prepare shared data that is computed once and reused across all parameter sets.
 Returns a NamedTuple containing initial state, contact matrices, demographics, timespan, and callbacks.
 """
 function prepare_shared_data(
-    cd::DataLoader.CountryData,
-    time_end::Float64,
-    increment::Float64,
-    log_rt::Bool
+        cd::DataLoader.CountryData,
+        time_end::Float64,
+        increment::Float64
 )
     # All of these are expensive and independent of infection parameters
     init_state = initial_state(cd)
+
+    # add Rt compartment at end; this holds zero as r0 may differ across runs
+    init_state = reshape(init_state, length(init_state))
+    init_state = [init_state; 0.0]
+
     contacts_unscaled = total_contacts(prepare_contacts(cd; scaled = false))
     cw = worker_contacts(cd)
     contacts_array = contacts3d(cd)
     settings = get_settings(cd)
     demog = SVector{N_TOTAL_GROUPS}(prepare_demog(cd))
+    cm_temp::Matrix{Float64} = ones(N_TOTAL_GROUPS, N_TOTAL_GROUPS)
 
     # Timespan setup
     timespan = (0.0, time_end)
@@ -106,10 +111,11 @@ function prepare_shared_data(
         contacts_unscaled = contacts_unscaled,
         cw = cw,
         contacts_array = contacts_array,
+        cm_temp = cm_temp,
         settings = settings,
         demog = demog,
         timespan = timespan,
-        savepoints = savepoints,
+        savepoints = savepoints
     )
 end
 
