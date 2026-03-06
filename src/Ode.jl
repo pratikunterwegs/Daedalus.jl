@@ -23,10 +23,10 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
 
     # view the values of each compartment per age group
     # rows represent age groups, epi compartments are columns
-    U = @view u[1:p.size]
+    U = @view u[1:p.size_state]
     U = reshape(U, (N_TOTAL_GROUPS, N_COMPARTMENTS, N_VACCINE_STRATA))
 
-    dU = @view du[1:p.size]
+    dU = @view du[1:p.size_state]
     dU = reshape(dU, (N_TOTAL_GROUPS, N_COMPARTMENTS, N_VACCINE_STRATA))
 
     # using views does not seem to affect performance greatly

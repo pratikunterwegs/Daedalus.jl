@@ -37,7 +37,7 @@ mutable struct Params
     gamma_H::Vector{Float64}
     nu::Float64
     psi::Float64
-    size::Int
+    size_state::Int
 end
 
 abstract type Event end
