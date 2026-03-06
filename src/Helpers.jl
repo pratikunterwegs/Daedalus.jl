@@ -6,7 +6,6 @@ export get_beta, get_ngm, sum_by_age, dominant_eigenvalue, weighted_slice_sum!
 using ..Constants
 
 using LinearAlgebra
-using StaticArrays
 
 """
     get_beta(
@@ -85,7 +84,7 @@ function get_ngm(cm::Matrix{Float64}, beta::Float64,
 
     ngm = f_mat * v_inv[:, 1:n_groups]
 
-    return SMatrix{n_groups, n_groups}(ngm)
+    return ngm
 end
 
 function get_ngm(cm::Matrix{Float64}, beta::Vector{Float64},

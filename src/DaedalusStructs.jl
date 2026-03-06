@@ -4,7 +4,6 @@ module DaedalusStructs
 using ..Constants
 
 using DiffEqCallbacks
-using StaticArrays
 
 export Params, NpiData, Npi, TimedNpi, StateData, CtStateData, DsStateData,
        get_indices, get_comp_threshold, n_phases, total_duration
@@ -20,9 +19,9 @@ mutable struct Params
     contacts::Array{Float64, 3}
     cm_temp::Matrix{Float64}
     settings::Int
-    ngm::StaticArray
-    demography::StaticVector
-    cw::StaticVector
+    ngm::Matrix{Float64}
+    demography::Vector{Float64}
+    cw::Vector{Float64}
     beta::Float64
     beta_now::Float64  # holds current beta
     sigma::Float64

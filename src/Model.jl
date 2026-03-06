@@ -3,9 +3,6 @@ export daedalus
 
 using OrdinaryDiffEq  # consider even lighter deps
 using DiffEqCallbacks: SavingCallback, SavedValues, PresetTimeCallback
-using LinearAlgebra: eigen
-using StaticArrays
-using Base.Threads
 
 using .Constants
 using .Ode
@@ -99,7 +96,7 @@ function prepare_shared_data(
     cw = worker_contacts(cd)
     contacts_array = contacts3d(cd)
     settings = get_settings(cd)
-    demog = SVector{N_TOTAL_GROUPS}(prepare_demog(cd))
+    demog = prepare_demog(cd)
     cm_temp::Matrix{Float64} = ones(N_TOTAL_GROUPS, N_TOTAL_GROUPS)
 
     # Timespan setup
@@ -120,128 +117,52 @@ function prepare_shared_data(
 end
 
 """
-    daedalus_internal(r0_input, shared_data, sigma, p_sigma, epsilon, rho, 
-        eta, omega, gamma_Ia, gamma_Is, gamma_H, nu, psi, cb_set, n_threads)
+    daedalus_internal(n_runs, shared_data, param_sets, cb_set)
 
 Internal function that orchestrates single or multi-run ODE solving.
 Handles both scalar r0 and vector r0 cases.
 Uses efficient ODE problem reuse via remake() and optional multi-threading.
 
 # Arguments
-- `r0_input`: Scalar Float64 or Vector{Float64} of r0 values
+- `n_runs`: Number of parameter sets
 - `shared_data`: Pre-computed country/structure data from prepare_shared_data()
+- `param_sets`: Collection of parameter sets.
 - `cb_set`: Callback set (pre-constructed by caller)
-- `n_threads`: Number of threads for parallel execution
 """
 function daedalus_internal(
         n_runs::Int,
         shared_data::NamedTuple,
-        ngm, # need to figure out the type here
-        r0::Union{Float64, Vector{Float64}},
-        beta::Union{Float64, Vector{Float64}},
-        sigma, p_sigma, epsilon, rho,
-        eta::Vector{Float64}, omega::Vector{Float64},
-        gamma_Ia, gamma_Is,
-        gamma_H::Vector{Float64},
-        nu, psi,
-        size_state,
-        cb_set::CallbackSet,
-        n_threads::Int
+        param_sets,
+        cb_set::CallbackSet
 )
     iRt = Daedalus.Constants.get_indices("Rt")
 
-    # single run case
-    if (n_runs == 1)
-        params = Params(
-            shared_data.contacts_array, shared_data.cm_temp, shared_data.settings, ngm,
-            shared_data.demog, shared_data.cw, beta, beta, sigma, p_sigma,
-            epsilon, rho, eta, omega, omega, gamma_Ia, gamma_Is, gamma_H,
-            nu, psi, size_state
-        )
+    # create base problem with initial state
+    # Initial state for first run
+    init_state_first = shared_data.init_state
+    # init_state_first[iRt] = param_sets[1].r0
+    params_first = param_sets[1]
 
-        shared_data.init_state[iRt] = r0
+    base_problem = ODEProblem(
+        daedalus_ode!, init_state_first, shared_data.timespan, params_first
+    )
 
-        problem = ODEProblem(
-            daedalus_ode!, shared_data.init_state, shared_data.timespan, params
-        )
-        ode_solution = solve(problem, callback = cb_set, saveat = shared_data.savepoints)
-
-        return (sol = ode_solution, r0 = r0)
-    else
-        # Normalize r0_input to vector for uniform handling
-        results = Vector{NamedTuple}(undef, n_runs)
-
-        params_first = Params(
-            shared_data.contacts_array, shared_data.cm_temp, shared_data.settings, ngm[1],
-            shared_data.demog, shared_data.cw, beta[1], beta[1], sigma, p_sigma,
-            epsilon, rho, eta, omega, omega, gamma_Ia, gamma_Is, gamma_H,
-            nu, psi, size_state
-        )
-
-        # Initial state for first run
-        init_state_first = shared_data.init_state
-        init_state_first[iRt] = r0[1]
-
-        # Create base ODE problem
-        base_problem = ODEProblem(
-            daedalus_ode!, init_state_first, shared_data.timespan, params_first
-        )
-
-        # Function to solve a single run (for reuse in both serial and threaded execution)
-        function solve_single_run(i::Int)
-            r0_i = r0[i]
-            beta_i = beta[i]
-            ngm_i = ngm[i]
-
-            # Create params for this run --- annoying as most elements are
-            # shared. TODO: some separation of static and mutable elements?
-            params_i = Params(
-                shared_data.contacts_array, shared_data.cm_temp, shared_data.settings, ngm_i,
-                shared_data.demog, shared_data.cw, beta_i, beta_i, sigma, p_sigma,
-                epsilon, rho, eta, omega, omega, gamma_Ia, gamma_Is,
-                gamma_H, nu, psi, size_state
-            )
-
-            # Augment initial state with this run's r0 (reshape to 1D first)
-            init_state_i = deepcopy(shared_data.init_state)
-            init_state_i[iRt] = r0_i
-
-            # Create ODE problem via remake (efficient reuse of base structure)
-            problem_i = SciMLBase.remake(base_problem; u0 = init_state_i, p = params_i)
-
-            # Solve
-            ode_solution = solve(problem_i, callback = cb_set, saveat = shared_data.savepoints)
-
-            return (sol = ode_solution, r0 = r0_i)
+    prob_func = let p = param_sets[1], param_sets = param_sets
+        (prob, i, repeat) -> begin
+            SciMLBase.remake(base_problem, p = param_sets[i])
         end
-
-        ## This may or may not be do-able, and may not be necessary as Rt is
-        # logged in state
-        # # For single-run, extract saved_values from NPI if reactive
-        # saved_vals = if isnothing(npi)
-        #     nothing
-        # elseif isa(npi, Npi)
-        #     npi.saved_values
-        # else
-        #     nothing
-        # end
-        # return (sol = result.sol, saves = saved_vals, npi = npi)
-
-        # Execute solves (serial or multi-threaded)
-        if n_threads > 1
-            # Multi-threaded execution
-            Threads.@threads for i in 1:n_runs
-                results[i] = solve_single_run(i)
-            end
-        else
-            # Serial execution
-            for i in 1:n_runs
-                results[i] = solve_single_run(i)
-            end
-        end
-
-        return results
     end
+
+    ensemble_prob = EnsembleProblem(base_problem, prob_func = prob_func)
+
+    # NOTE: this does not save data at specific points
+    solution = solve(
+        ensemble_prob, EnsembleThreads(),
+        callback = cb_set,
+        trajectories = n_runs
+    )
+
+    return solution
 end
 
 function daedalus(;
@@ -261,8 +182,7 @@ function daedalus(;
         npi::Union{Npi, TimedNpi, Nothing} = nothing,
         log_rt = true,
         time_end::Float64 = 100.0,
-        increment::Float64 = 1.0,
-        n_threads::Int = 1)
+        increment::Float64 = 1.0)
 
     # resolve country string to CountryData if needed
     cd = isa(country, String) ? DataLoader.get_country(country) : country
@@ -271,6 +191,41 @@ function daedalus(;
 
     # Prepare shared data (done once for both single and multi-run)
     shared_data = prepare_shared_data(cd, time_end, increment)
+
+    # prepare parameter sets
+    # prepare betas and NGMs (NGMs use betas), convert to vectors if atomics
+    beta = get_beta(
+        shared_data.contacts_unscaled, r0, sigma, p_sigma,
+        epsilon, gamma_Ia, gamma_Is
+    )
+
+    ngm = get_ngm(
+        shared_data.contacts_unscaled, beta, sigma, p_sigma,
+        epsilon, gamma_Ia, gamma_Is
+    )
+
+    if (isa(beta, Float64))
+        beta = [beta]
+    end
+    if (!isa(ngm, Vector))
+        ngm = [ngm]
+    end
+
+    # Expand age-varying parameters
+    eta_exp = [eta; repeat([eta[i_WORKING_AGE]], N_ECON_GROUPS)]
+    omega_exp = [omega; repeat([omega[i_WORKING_AGE]], N_ECON_GROUPS)]
+    gamma_H_exp = [gamma_H; repeat([gamma_H[i_WORKING_AGE]], N_ECON_GROUPS)]
+
+    size_state::Int = N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA
+
+    param_sets = [Params(
+                      shared_data.contacts_array, shared_data.cm_temp, shared_data.settings,
+                      ngm[i], shared_data.demog,
+                      shared_data.cw, beta[i], beta[i],
+                      sigma, p_sigma, epsilon, rho, eta_exp,
+                      omega_exp, omega_exp, gamma_Ia, gamma_Is,
+                      gamma_H_exp, nu, psi, size_state
+                  ) for i in 1:n_runs]
 
     # Build callback set (shared across all runs)
     if isnothing(npi)
@@ -302,67 +257,9 @@ function daedalus(;
         end
     end
 
-    # prepare betas and NGMs (NGMs use betas)
-    beta = get_beta(
-        shared_data.contacts_unscaled, r0, sigma, p_sigma,
-        epsilon, gamma_Ia, gamma_Is
-    )
-
-    ngm = get_ngm(
-        shared_data.contacts_unscaled, beta, sigma, p_sigma,
-        epsilon, gamma_Ia, gamma_Is
-    )
-
-    # Expand age-varying parameters
-    eta_exp = [eta; repeat([eta[i_WORKING_AGE]], N_ECON_GROUPS)]
-    omega_exp = [omega; repeat([omega[i_WORKING_AGE]], N_ECON_GROUPS)]
-    gamma_H_exp = [gamma_H; repeat([gamma_H[i_WORKING_AGE]], N_ECON_GROUPS)]
-
-    size_state::Int = N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA
-
     sol = daedalus_internal(
-        n_runs, shared_data, ngm, r0, beta, sigma, p_sigma, epsilon,
-        rho, eta_exp, omega_exp, gamma_Ia, gamma_Is, gamma_H_exp, nu, psi,
-        size_state, cb_set, n_threads
+        n_runs, shared_data, param_sets, cb_set
     )
 
-    return sol
-
-    # # Delegate to internal solver for both single and multi-run cases
-    # if isa(r0, Vector)
-    #     # Multi-run mode
-    #     results = daedalus_internal(
-    #         cd, r0, shared_data,
-    #         sigma, p_sigma, epsilon, rho, eta, omega, gamma_Ia, gamma_Is, gamma_H, nu, psi,
-    #         cb_set, n_threads
-    #     )
-    #     # For multi-run, post-process results to add npi and saved_values
-    #     for i in eachindex(results)
-    #         saved_vals = if isnothing(npi)
-    #             nothing
-    #         elseif isa(npi, Npi)
-    #             npi.saved_values
-    #         else
-    #             nothing
-    #         end
-    #         results[i] = (sol = results[i].sol, saves = saved_vals, npi = npi, r0 = results[i].r0)
-    #     end
-    #     return results
-    # else
-    #     # Single-run mode - call internal and post-process result
-    #     result = daedalus_internal(
-    #         cd, r0, shared_data,
-    #         sigma, p_sigma, epsilon, rho, eta, omega, gamma_Ia, gamma_Is, gamma_H, nu, psi,
-    #         cb_set, n_threads
-    #     )
-    #     # For single-run, extract saved_values from NPI if reactive
-    #     saved_vals = if isnothing(npi)
-    #         nothing
-    #     elseif isa(npi, Npi)
-    #         npi.saved_values
-    #     else
-    #         nothing
-    #     end
-    #     return (sol = result.sol, saves = saved_vals, npi = npi)
-    # end
+    return (sol = sol, npi = npi, cbset = cb_set, r0 = r0)
 end
