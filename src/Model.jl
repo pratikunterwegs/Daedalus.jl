@@ -114,7 +114,8 @@ function prepare_shared_data(
 end
 
 """
-    daedalus_internal(cd, r0_input, shared_data, sigma, p_sigma, epsilon, rho, eta, omega, gamma_Ia, gamma_Is, gamma_H, nu, psi, cb_set, n_threads)
+    daedalus_internal(r0_input, shared_data, sigma, p_sigma, epsilon, rho, 
+        eta, omega, gamma_Ia, gamma_Is, gamma_H, nu, psi, cb_set, n_threads)
 
 Internal function that orchestrates single or multi-run ODE solving.
 Handles both scalar r0 and vector r0 cases.
@@ -127,108 +128,112 @@ Uses efficient ODE problem reuse via remake() and optional multi-threading.
 - `n_threads`: Number of threads for parallel execution
 """
 function daedalus_internal(
-    cd::DataLoader.CountryData,
-    r0_input::Union{Float64, Vector{Float64}},
-    shared_data::NamedTuple,
-    sigma, p_sigma, epsilon, rho, eta, omega, gamma_Ia, gamma_Is, gamma_H, nu, psi,
-    cb_set::CallbackSet,
-    n_threads::Int
+        n_runs::Int,
+        shared_data::NamedTuple,
+        ngm, # need to figure out the type here
+        r0::Union{Float64, Vector{Float64}},
+        beta::Union{Float64, Vector{Float64}},
+        sigma, p_sigma, epsilon, rho,
+        eta::Vector{Float64}, omega::Vector{Float64},
+        gamma_Ia, gamma_Is,
+        gamma_H::Vector{Float64},
+        nu, psi,
+        size_state,
+        cb_set::CallbackSet,
+        n_threads::Int
 )
-    # Normalize r0_input to vector for uniform handling
-    r0_vec = isa(r0_input, Vector) ? r0_input : [r0_input]
-    n_runs = length(r0_vec)
-    is_scalar_input = !isa(r0_input, Vector)
+    iRt = Daedalus.Constants.get_indices("Rt")
 
-    results = Vector{NamedTuple}(undef, n_runs)
-
-    # Create base problem for first r0, then reuse structure via remake()
-    r0_first = r0_vec[1]
-
-    # Compute derived parameters for first run
-    beta_first = get_beta(
-        shared_data.contacts_unscaled,
-        r0_first, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
-    )
-    ngm_first = get_ngm(
-        shared_data.contacts_unscaled,
-        r0_first, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
-    )
-
-    # Expand age-varying parameters
-    eta_exp = [eta; repeat([eta[i_WORKING_AGE]], N_ECON_GROUPS)]
-    omega_exp = [omega; repeat([omega[i_WORKING_AGE]], N_ECON_GROUPS)]
-    gamma_H_exp = [gamma_H; repeat([gamma_H[i_WORKING_AGE]], N_ECON_GROUPS)]
-
-    size::Int = N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA
-    cm_temp::Matrix{Float64} = ones(N_TOTAL_GROUPS, N_TOTAL_GROUPS)
-
-    params_first = Params(
-        shared_data.contacts_array, cm_temp, shared_data.settings, ngm_first,
-        shared_data.demog, shared_data.cw, beta_first, beta_first, sigma, p_sigma,
-        epsilon, rho, eta_exp, omega_exp, omega_exp, gamma_Ia, gamma_Is, gamma_H_exp,
-        nu, psi, size
-    )
-
-    # Initial state for first run (reshape to 1D for concatenation with scalar r0)
-    init_state_vec = reshape(shared_data.init_state, length(shared_data.init_state))
-    init_state_aug = [init_state_vec; r0_first]
-
-    # Create base ODE problem
-    base_problem = ODEProblem(
-        daedalus_ode!, init_state_aug, shared_data.timespan, params_first
-    )
-
-    # Function to solve a single run (for reuse in both serial and threaded execution)
-    function solve_single_run(i::Int)
-        r0_i = r0_vec[i]
-
-        # Compute derived parameters for this run
-        beta_i = get_beta(
-            shared_data.contacts_unscaled,
-            r0_i, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
-        )
-        ngm_i = get_ngm(
-            shared_data.contacts_unscaled,
-            r0_i, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
+    # single run case
+    if (n_runs == 1)
+        params = Params(
+            shared_data.contacts_array, shared_data.cm_temp, shared_data.settings, ngm,
+            shared_data.demog, shared_data.cw, beta, beta, sigma, p_sigma,
+            epsilon, rho, eta, omega, omega, gamma_Ia, gamma_Is, gamma_H,
+            nu, psi, size_state
         )
 
-        # Create params for this run
-        params_i = Params(
-            shared_data.contacts_array, cm_temp, shared_data.settings, ngm_i,
-            shared_data.demog, shared_data.cw, beta_i, beta_i, sigma, p_sigma,
-            epsilon, rho, eta_exp, omega_exp, omega_exp, gamma_Ia, gamma_Is,
-            gamma_H_exp, nu, psi, size
+        shared_data.init_state[iRt] = r0
+
+        problem = ODEProblem(
+            daedalus_ode!, shared_data.init_state, shared_data.timespan, params
         )
+        ode_solution = solve(problem, callback = cb_set, saveat = shared_data.savepoints)
 
-        # Augment initial state with this run's r0 (reshape to 1D first)
-        init_state_i = [init_state_vec; r0_i]
-
-        # Create ODE problem via remake (efficient reuse of base structure)
-        problem_i = SciMLBase.remake(base_problem; u0 = init_state_i, p = params_i)
-
-        # Solve
-        ode_solution = solve(problem_i, callback = cb_set, saveat = shared_data.savepoints)
-
-        return (sol = ode_solution, saves = nothing, npi = nothing, r0 = r0_i)
-    end
-
-    # Execute solves (serial or multi-threaded)
-    if n_threads > 1
-        # Multi-threaded execution
-        Threads.@threads for i in 1:n_runs
-            results[i] = solve_single_run(i)
-        end
+        return (sol = ode_solution, r0 = r0)
     else
-        # Serial execution
-        for i in 1:n_runs
-            results[i] = solve_single_run(i)
-        end
-    end
+        # Normalize r0_input to vector for uniform handling
+        results = Vector{NamedTuple}(undef, n_runs)
 
-    # Return single result if scalar input, otherwise return vector
-    if is_scalar_input
-        return results[1]
-    else
+        params_first = Params(
+            shared_data.contacts_array, shared_data.cm_temp, shared_data.settings, ngm[1],
+            shared_data.demog, shared_data.cw, beta[1], beta[1], sigma, p_sigma,
+            epsilon, rho, eta, omega, omega, gamma_Ia, gamma_Is, gamma_H,
+            nu, psi, size_state
+        )
+
+        # Initial state for first run
+        init_state_first = shared_data.init_state
+        init_state_first[iRt] = r0[1]
+
+        # Create base ODE problem
+        base_problem = ODEProblem(
+            daedalus_ode!, init_state_first, shared_data.timespan, params_first
+        )
+
+        # Function to solve a single run (for reuse in both serial and threaded execution)
+        function solve_single_run(i::Int)
+            r0_i = r0[i]
+            beta_i = beta[i]
+            ngm_i = ngm[i]
+
+            # Create params for this run --- annoying as most elements are
+            # shared. TODO: some separation of static and mutable elements?
+            params_i = Params(
+                shared_data.contacts_array, shared_data.cm_temp, shared_data.settings, ngm_i,
+                shared_data.demog, shared_data.cw, beta_i, beta_i, sigma, p_sigma,
+                epsilon, rho, eta, omega, omega, gamma_Ia, gamma_Is,
+                gamma_H, nu, psi, size_state
+            )
+
+            # Augment initial state with this run's r0 (reshape to 1D first)
+            init_state_i = deepcopy(shared_data.init_state)
+            init_state_i[iRt] = r0_i
+
+            # Create ODE problem via remake (efficient reuse of base structure)
+            problem_i = SciMLBase.remake(base_problem; u0 = init_state_i, p = params_i)
+
+            # Solve
+            ode_solution = solve(problem_i, callback = cb_set, saveat = shared_data.savepoints)
+
+            return (sol = ode_solution, r0 = r0_i)
+        end
+
+        ## This may or may not be do-able, and may not be necessary as Rt is
+        # logged in state
+        # # For single-run, extract saved_values from NPI if reactive
+        # saved_vals = if isnothing(npi)
+        #     nothing
+        # elseif isa(npi, Npi)
+        #     npi.saved_values
+        # else
+        #     nothing
+        # end
+        # return (sol = result.sol, saves = saved_vals, npi = npi)
+
+        # Execute solves (serial or multi-threaded)
+        if n_threads > 1
+            # Multi-threaded execution
+            Threads.@threads for i in 1:n_runs
+                results[i] = solve_single_run(i)
+            end
+        else
+            # Serial execution
+            for i in 1:n_runs
+                results[i] = solve_single_run(i)
+            end
+        end
+
         return results
     end
 end
