@@ -267,8 +267,10 @@ function daedalus(;
     # resolve country string to CountryData if needed
     cd = isa(country, String) ? DataLoader.get_country(country) : country
 
+    n_runs = isa(r0, Vector) ? length(r0) : 1
+
     # Prepare shared data (done once for both single and multi-run)
-    shared_data = prepare_shared_data(cd, time_end, increment, log_rt)
+    shared_data = prepare_shared_data(cd, time_end, increment)
 
     # Build callback set (shared across all runs)
     if isnothing(npi)
@@ -300,42 +302,67 @@ function daedalus(;
         end
     end
 
-    # Delegate to internal solver for both single and multi-run cases
-    if isa(r0, Vector)
-        # Multi-run mode
-        results = daedalus_internal(
-            cd, r0, shared_data,
-            sigma, p_sigma, epsilon, rho, eta, omega, gamma_Ia, gamma_Is, gamma_H, nu, psi,
-            cb_set, n_threads
-        )
-        # For multi-run, post-process results to add npi and saved_values
-        for i in eachindex(results)
-            saved_vals = if isnothing(npi)
-                nothing
-            elseif isa(npi, Npi)
-                npi.saved_values
-            else
-                nothing
-            end
-            results[i] = (sol = results[i].sol, saves = saved_vals, npi = npi, r0 = results[i].r0)
-        end
-        return results
-    else
-        # Single-run mode - call internal and post-process result
-        result = daedalus_internal(
-            cd, r0, shared_data,
-            sigma, p_sigma, epsilon, rho, eta, omega, gamma_Ia, gamma_Is, gamma_H, nu, psi,
-            cb_set, n_threads
-        )
-        # For single-run, extract saved_values from NPI if reactive
-        saved_vals = if isnothing(npi)
-            nothing
-        elseif isa(npi, Npi)
-            npi.saved_values
-        else
-            nothing
-        end
-        return (sol = result.sol, saves = saved_vals, npi = npi)
-    end
-end
+    # prepare betas and NGMs (NGMs use betas)
+    beta = get_beta(
+        shared_data.contacts_unscaled, r0, sigma, p_sigma,
+        epsilon, gamma_Ia, gamma_Is
+    )
 
+    ngm = get_ngm(
+        shared_data.contacts_unscaled, beta, sigma, p_sigma,
+        epsilon, gamma_Ia, gamma_Is
+    )
+
+    # Expand age-varying parameters
+    eta_exp = [eta; repeat([eta[i_WORKING_AGE]], N_ECON_GROUPS)]
+    omega_exp = [omega; repeat([omega[i_WORKING_AGE]], N_ECON_GROUPS)]
+    gamma_H_exp = [gamma_H; repeat([gamma_H[i_WORKING_AGE]], N_ECON_GROUPS)]
+
+    size_state::Int = N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA
+
+    sol = daedalus_internal(
+        n_runs, shared_data, ngm, r0, beta, sigma, p_sigma, epsilon,
+        rho, eta_exp, omega_exp, gamma_Ia, gamma_Is, gamma_H_exp, nu, psi,
+        size_state, cb_set, n_threads
+    )
+
+    return sol
+
+    # # Delegate to internal solver for both single and multi-run cases
+    # if isa(r0, Vector)
+    #     # Multi-run mode
+    #     results = daedalus_internal(
+    #         cd, r0, shared_data,
+    #         sigma, p_sigma, epsilon, rho, eta, omega, gamma_Ia, gamma_Is, gamma_H, nu, psi,
+    #         cb_set, n_threads
+    #     )
+    #     # For multi-run, post-process results to add npi and saved_values
+    #     for i in eachindex(results)
+    #         saved_vals = if isnothing(npi)
+    #             nothing
+    #         elseif isa(npi, Npi)
+    #             npi.saved_values
+    #         else
+    #             nothing
+    #         end
+    #         results[i] = (sol = results[i].sol, saves = saved_vals, npi = npi, r0 = results[i].r0)
+    #     end
+    #     return results
+    # else
+    #     # Single-run mode - call internal and post-process result
+    #     result = daedalus_internal(
+    #         cd, r0, shared_data,
+    #         sigma, p_sigma, epsilon, rho, eta, omega, gamma_Ia, gamma_Is, gamma_H, nu, psi,
+    #         cb_set, n_threads
+    #     )
+    #     # For single-run, extract saved_values from NPI if reactive
+    #     saved_vals = if isnothing(npi)
+    #         nothing
+    #     elseif isa(npi, Npi)
+    #         npi.saved_values
+    #     else
+    #         nothing
+    #     end
+    #     return (sol = result.sol, saves = saved_vals, npi = npi)
+    # end
+end
