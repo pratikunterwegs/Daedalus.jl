@@ -6,7 +6,6 @@ module Data
 using ..Constants
 using ..DataLoader
 using LinearAlgebra
-using StaticArrays
 
 export prepare_contacts, contacts3d, get_settings, total_contacts,
        prepare_community_contacts, worker_contacts, consumer_worker_contacts,
@@ -28,7 +27,7 @@ function worker_contacts(workers; scaled = true)
         x = x ./ workers
     end
 
-    return SVector{N_ECON_GROUPS}(x)
+    return x
 end
 
 function consumer_worker_contacts(demography; scaled = true)
@@ -40,7 +39,7 @@ function consumer_worker_contacts(demography; scaled = true)
         ccw *= Diagonal(1 ./ demography[i_AGE_GROUPS])
     end
 
-    return SMatrix{N_ECON_GROUPS, N_AGE_GROUPS}(ccw)
+    return ccw
 end
 
 """
@@ -63,7 +62,7 @@ function prepare_community_contacts(cm; scaled = true)
         cm_x *= Diagonal(1 ./ prepare_demog())
     end
 
-    return SMatrix{N_TOTAL_GROUPS, N_TOTAL_GROUPS}(cm_x)
+    return cm_x
 end
 
 """
@@ -103,7 +102,7 @@ function worker_contacts(cd::CountryData; scaled = true)
     if scaled
         x = x ./ max.(cd.workers, 1)
     end
-    return SVector{N_ECON_GROUPS}(x)
+    return x
 end
 
 function expand_contacts(cm::Matrix{Float64})
@@ -121,7 +120,7 @@ function expand_contacts(cm::Matrix{Float64})
 end
 
 """
-    consumer_worker_contacts(cd::CountryData; scaled=true) -> SMatrix
+    consumer_worker_contacts(cd::CountryData; scaled=true)
 
 Get the 45×4 consumer-worker contact matrix scaled by the age-group
 demography in `cd`.
@@ -131,7 +130,7 @@ function consumer_worker_contacts(cd::CountryData; scaled = true)
 end
 
 """
-    prepare_contacts(cd::CountryData; scaled=true) -> SMatrix
+    prepare_contacts(cd::CountryData; scaled=true)
 
 Get a 49×49 contact matrix for all age-groups and economic sectors using
 the demographic and contact data in `cd`.
@@ -216,7 +215,7 @@ function get_settings(cd::CountryData)::Int
 end
 
 """
-    prepare_community_contacts(cd::CountryData; scaled=true) -> SMatrix
+    prepare_community_contacts(cd::CountryData; scaled=true)
 
 Get a 49×49 community-only contact matrix for all age-groups and economic
 sectors using `cd`. Workplace and consumer-worker contacts are excluded.
@@ -232,7 +231,7 @@ function prepare_community_contacts(cd::CountryData; scaled = true)
         cm_x *= Diagonal(1 ./ prepare_demog(cd))
     end
 
-    return SMatrix{N_TOTAL_GROUPS, N_TOTAL_GROUPS}(cm_x)
+    return cm_x
 end
 
 """
@@ -282,7 +281,7 @@ function initial_state(country::String)
 end
 
 """
-    prepare_contacts(country::String; scaled=true) -> SMatrix
+    prepare_contacts(country::String; scaled=true)
 
 Get the 49×49 contact matrix for a named country.
 """
@@ -291,7 +290,7 @@ function prepare_contacts(country::String; scaled = true)
 end
 
 """
-    prepare_community_contacts(country::String; scaled=true) -> SMatrix
+    prepare_community_contacts(country::String; scaled=true)
 
 Get the 49×49 community-only contact matrix for a named country.
 """
