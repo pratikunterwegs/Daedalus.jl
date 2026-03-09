@@ -16,8 +16,8 @@ using Plots
 hosp_threshold=20000.0
 a = Daedalus.DaedalusStructs.Npi(hosp_threshold, (coef=0.7,));
 
-data = daedalus(country="Australia", r0=3.0, npi=a, time_end=600.0);
-data_default = daedalus(country="Australia", r0=3.0, time_end=600.0);
+data = daedalus("Australia", 3.0, npi=a, time_end=600.0);
+data_default = daedalus("Australia", 3.0, time_end=600.0);
 
 # plot new hosp over time
 iHosp = Daedalus.Constants.get_indices("H")
@@ -61,7 +61,7 @@ timed_npi = Daedalus.DaedalusStructs.TimedNpi(
     "three_phase_lockdown"
 )
 
-data = daedalus(country="Australia", r0=3.0, npi=timed_npi, time_end=600.0);
+data = daedalus("Australia", 3.0, npi=timed_npi, time_end=600.0);
 
 # get exposed
 iExpo = Daedalus.Constants.get_indices("E")
