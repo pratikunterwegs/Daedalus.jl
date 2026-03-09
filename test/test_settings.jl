@@ -38,7 +38,7 @@
     @testset "daedalus runs with two equal settings" begin
         cd2 = deepcopy(cd)
         cd2.contact_matrix = [cm, cm]
-        result = daedalus(country = cd2, r0 = 2.5, time_end = 100.0, log_rt = false)
+        result = daedalus(cd2, 2.5, time_end = 100.0, log_rt = false)
         @test length(result.sol.t) == 101
         @test all(isfinite, result.sol.u[end])
     end
@@ -54,8 +54,8 @@
         cd2 = deepcopy(cd)
         cd2.contact_matrix = [cm, cm]
         r0 = 2.5
-        result_1 = daedalus(country = cd, r0 = r0, time_end = 300.0, log_rt = false)
-        result_2 = daedalus(country = cd2, r0 = r0, time_end = 300.0, log_rt = false)
+        result_1 = daedalus(cd, r0, time_end = 300.0, log_rt = false)
+        result_2 = daedalus(cd2, r0, time_end = 300.0, log_rt = false)
         deaths_1 = last(Daedalus.Outputs.get_values(result_1, "D", 1))
         deaths_2 = last(Daedalus.Outputs.get_values(result_2, "D", 1))
         @test deaths_2 ≈ deaths_1 rtol = 1e-3

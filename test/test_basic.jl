@@ -1,6 +1,6 @@
 @testset "DAEDALUS model" begin
     try
-        daedalus(country = "Australia", r0 = 5.0, time_end = 100.0)
+        daedalus("Australia", 5.0, time_end = 100.0)
         @test true
     catch e
         @test false
@@ -9,13 +9,12 @@ end
 
 @testset "daedalus accepts CountryData struct" begin
     cd = Daedalus.DataLoader.get_country("Australia")
-    result = daedalus(country = cd, r0 = 3.0, time_end = 100.0, log_rt = false)
+    result = daedalus(cd, 3.0, time_end = 100.0, log_rt = false)
     @test length(result.sol.t) == 101
     @test all(isfinite, result.sol.u[end])
 
     # result must be identical to string-based call
-    result_str = daedalus(country = "Australia", r0 = 3.0, time_end = 100.0,
-        log_rt = false)
+    result_str = daedalus("Australia", 3.0, time_end = 100.0, log_rt = false)
     @test result.sol.u[end] ≈ result_str.sol.u[end]
 end
 
@@ -29,19 +28,22 @@ end
     gamma_Ia = 0.476
     gamma_Is = 0.25
 
-    cm = Daedalus.DataLoader.get_country("Australia").contact_matrix
+    aus = Daedalus.DataLoader.get_country("Australia")
+    contacts_unscaled = Daedalus.Data.total_contacts(
+        Daedalus.Data.prepare_contacts(aus; scaled = false)
+    )
 
     beta = Daedalus.Helpers.get_beta(
-        cm,
+        contacts_unscaled,
         r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
     )
     @test typeof(beta) == Float64
 
     ngm = Daedalus.Helpers.get_ngm(
-        cm,
-        r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
+        contacts_unscaled,
+        beta, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
     )
-    lambda = maximum(eigen(ngm).values)
+    lambda = maximum(real(eigen(ngm).values))
 
     @test lambda ≈ r0
 end
