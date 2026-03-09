@@ -7,15 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Multi-parameter run support: `daedalus()` now accepts `r0` as a `Vector{Float64}` to run the model with multiple R0 values in a single call
-- Multi-threaded execution: New `n_threads` parameter (default `1`) enables parallel ODE solving across multiple r0 values using `Base.Threads`
-- Helper function `prepare_shared_data()` for extracting shared computation (country data, contacts, demographics) that is computed once and reused across parameter sets
-- Internal function `daedalus_internal_multi()` for orchestrating multi-run ODE solving with efficient problem reuse via `SciMLBase.remake()`
-- Comprehensive test suite `test/test_multi_runs.jl` covering: scalar vs. vector r0, multi-threading correctness, parameter preservation, edge cases, and backward compatibility
+## [0.0.5] - 2026-03-09
 
 ### Changed
-- `daedalus()` return type now differs based on input: scalar r0 returns single `NamedTuple`, vector r0 returns `Vector{NamedTuple}` where each result includes a `.r0` field recording the parameter value
+- `daedalus()` function signature: `country` is now the first positional argument and `r0` is the second positional argument, enabling method dispatch on `r0` type (scalar `Float64` vs vector `Vector{Float64}`) across two separate implementations in `src/Model.jl` and `src/Ensemble.jl`
+- All documentation examples and benchmarks updated to reflect the new calling convention: `daedalus(country, r0, ...)` instead of previous keywords-first approach
+- All test files updated to use new positional argument signature for daedalus calls
+- Function calls now use positional arguments: `daedalus("Australia", 2.5, time_end=200.0)` instead of previous keyword-based calling conventions
+- Function `get_ngm()` requires transmission rate beta and not the $R_0$; function `get_beta()` is now vectorised over multiple values of $R_0$. The use case is generating multiple NGMs for ensemble runs without running `get_beta()` an equal number of times. `get_ngm()` has a method for a vector of `beta()`.
+
+### Added
+- Multiple dispatch implementation for `daedalus()`: scalar and vector R0 inputs are now handled via distinct function methods
+- Vector R0 dispatch in file `src/Ensemble.jl`: `daedalus(country, r0::Vector{Float64}; ...)` runs multiple R0 values in a single call
+- Multi-threaded execution: New `n_threads` parameter (default `1`) enables parallel ODE solving across multiple r0 values using `Base.Threads`
+- Helper functions `prepare_shared_data()` and `daedalus_internal()` exported from Model.jl for use by ensemble dispatch
+- Documentation page `docs/src/ensemble.md` with examples for running multiple R0 values in parallel, parameter sweeps, and comparing epidemic dynamics across scenarios
 
 ## [0.0.4] - 2026-03-02
 
