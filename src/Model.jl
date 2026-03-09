@@ -1,5 +1,5 @@
 
-export daedalus
+export daedalus, prepare_shared_data, daedalus_internal
 
 using OrdinaryDiffEq  # consider even lighter deps
 using DiffEqCallbacks: SavingCallback, SavedValues, PresetTimeCallback
@@ -31,20 +31,20 @@ strata.
 
 ## No intervention
 ```julia
-result = daedalus(country="Australia", r0=2.5, time_end=200.0)
+result = daedalus("Australia", 2.5, time_end=200.0)
 ```
 
 ## Using a pre-fetched CountryData struct
 ```julia
 cd = Daedalus.DataLoader.get_country("Australia")
-result = daedalus(country=cd, r0=2.5, time_end=200.0)
+result = daedalus(cd, 2.5, time_end=200.0)
 ```
 
 ## Single-phase time-limited intervention
 ```julia
 # 30% transmission reduction from day 15 to day 45
 npi = TimedNpi(15.0, 45.0, 0.7, "moderate_lockdown")
-result = daedalus(country="Australia", r0=2.5, time_end=200.0, npi=npi)
+result = daedalus("Australia", 2.5, time_end=200.0, npi=npi)
 ```
 
 ## Multi-phase time-limited intervention
@@ -56,29 +56,31 @@ npi = TimedNpi(
     [0.7, 0.3, 0.5],     # coefficients
     "three_phase_strategy"
 )
-result = daedalus(country="Australia", r0=2.5, time_end=200.0, npi=npi)
+result = daedalus("Australia", 2.5, time_end=200.0, npi=npi)
 ```
 
 ## Reactive (state-dependent) intervention
 ```julia
 # Triggers when hospitalizations reach threshold, deactivates when Rt < 1
 npi = Npi(5000.0, (coef=0.4,))
-result = daedalus(country="Australia", r0=2.5, time_end=200.0, npi=npi)
+result = daedalus("Australia", 2.5, time_end=200.0, npi=npi)
 ```
 
 ## Multiple R0 values with multi-threading
 ```julia
 # Run model with multiple R0 values in parallel
-results = daedalus(country="Australia", r0=[1.0, 2.0, 3.0], time_end=200.0, n_threads=4)
+results = daedalus("Australia", [1.0, 2.0, 3.0], time_end=200.0)
 # Returns: Vector of results, one per R0 value
 ```
 """
 
 """
-    prepare_shared_data(cd::DataLoader.CountryData, time_end::Float64, increment::Float64)
+    prepare_shared_data(cd::DataLoader.CountryData, time_end::Float64, 
+        increment::Float64)
 
 Prepare shared data that is computed once and reused across all parameter sets.
-Returns a NamedTuple containing initial state, contact matrices, demographics, timespan, and callbacks.
+Returns a NamedTuple containing initial state, contact matrices, demographics,
+timespan, and callbacks.
 """
 function prepare_shared_data(
         cd::DataLoader.CountryData,
@@ -159,15 +161,14 @@ function daedalus_internal(
     solution = solve(
         ensemble_prob, EnsembleThreads(),
         callback = cb_set,
-        trajectories = n_runs
+        trajectories = n_runs,
+        saveat = shared_data.savepoints
     )
 
     return solution
 end
 
-function daedalus(;
-        country::Union{String, DataLoader.CountryData} = "Canada",
-        r0::Union{Float64, Vector{Float64}} = 1.3, # manual beta assumes R0 = 1.3, infectious period = 7 days
+function daedalus(country::Union{String, DataLoader.CountryData}, r0::Float64;
         sigma = 0.217,
         p_sigma = 0.867,
         epsilon = 0.58,
@@ -187,79 +188,99 @@ function daedalus(;
     # resolve country string to CountryData if needed
     cd = isa(country, String) ? DataLoader.get_country(country) : country
 
-    n_runs = isa(r0, Vector) ? length(r0) : 1
+    # get all values from country data
+    init_state = initial_state(cd)
+    contacts_unscaled = total_contacts(prepare_contacts(cd; scaled = false))
+    cw = worker_contacts(cd)
 
-    # Prepare shared data (done once for both single and multi-run)
-    shared_data = prepare_shared_data(cd, time_end, increment)
-
-    # prepare parameter sets
-    # prepare betas and NGMs (NGMs use betas), convert to vectors if atomics
+    # calculate beta
     beta = get_beta(
-        shared_data.contacts_unscaled, r0, sigma, p_sigma,
-        epsilon, gamma_Ia, gamma_Is
+        contacts_unscaled,
+        r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
     )
 
+    # age varying parameters
+    eta = [eta; repeat([eta[i_WORKING_AGE]], N_ECON_GROUPS)]
+    omega = [omega; repeat([omega[i_WORKING_AGE]], N_ECON_GROUPS)]
+    gamma_H = [gamma_H; repeat([gamma_H[i_WORKING_AGE]], N_ECON_GROUPS)]
+
+    # NGM
     ngm = get_ngm(
-        shared_data.contacts_unscaled, beta, sigma, p_sigma,
-        epsilon, gamma_Ia, gamma_Is
+        contacts_unscaled,
+        beta, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
+    )
+    demog = prepare_demog(cd)
+
+    size::Int = N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA
+
+    # combined parameters into an array
+    contacts_array = contacts3d(cd)
+    settings = get_settings(cd)
+    cm_temp::Matrix{Float64} = ones(N_TOTAL_GROUPS, N_TOTAL_GROUPS)
+    parameters::Params = Params(contacts_array, cm_temp, settings, ngm, demog,
+        cw, beta, beta, sigma, p_sigma, epsilon, rho, eta, omega, omega,
+        gamma_Ia, gamma_Is, gamma_H, nu, psi,
+        size)
+
+    # prepare the timespan and savepoints
+    timespan = (0.0, time_end)
+    savepoints = 0.0:increment:time_end
+
+    # add Rt compartment at end
+    init_state = reshape(init_state, length(init_state))
+    init_state = [init_state; r0]
+
+    # define the ode problem
+    ode_problem = ODEProblem(
+        daedalus_ode!, init_state, timespan, parameters
     )
 
-    if (isa(beta, Float64))
-        beta = [beta]
-    end
-    if (!isa(ngm, Vector))
-        ngm = [ngm]
-    end
-
-    # Expand age-varying parameters
-    eta_exp = [eta; repeat([eta[i_WORKING_AGE]], N_ECON_GROUPS)]
-    omega_exp = [omega; repeat([omega[i_WORKING_AGE]], N_ECON_GROUPS)]
-    gamma_H_exp = [gamma_H; repeat([gamma_H[i_WORKING_AGE]], N_ECON_GROUPS)]
-
-    size_state::Int = N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA
-
-    param_sets = [Params(
-                      shared_data.contacts_array, shared_data.cm_temp, shared_data.settings,
-                      ngm[i], shared_data.demog,
-                      shared_data.cw, beta[i], beta[i],
-                      sigma, p_sigma, epsilon, rho, eta_exp,
-                      omega_exp, omega_exp, gamma_Ia, gamma_Is,
-                      gamma_H_exp, nu, psi, size_state
-                  ) for i in 1:n_runs]
-
-    # Build callback set (shared across all runs)
+    # check if NPI is passed and define callbacks accordingly
     if isnothing(npi)
+        # No intervention
+        cb_set = CallbackSet()
         if log_rt
-            rt_logger = make_rt_logger(shared_data.savepoints)
+            rt_logger = make_rt_logger(savepoints)
             cb_set = CallbackSet(rt_logger)
-        else
-            cb_set = CallbackSet()
         end
     elseif isa(npi, TimedNpi)
+        # Time-limited NPI - purely time-based triggers
         timed_callbacks = make_timed_npi_callbacks(npi)
+
         if log_rt
-            rt_logger = make_rt_logger(shared_data.savepoints)
+            rt_logger = make_rt_logger(savepoints)
             cb_set = CallbackSet(timed_callbacks, rt_logger)
         else
             cb_set = timed_callbacks
         end
     elseif isa(npi, Npi)
+        # Reactive NPI - state-dependent triggers
         coef = get_coef(npi)
         fn_effect_on = make_param_changer("beta", .*, coef)
         fn_effect_off = make_param_reset("beta")
-        save_events = make_save_events(npi, shared_data.savepoints)
-        events = make_events(npi, fn_effect_on, fn_effect_off, shared_data.savepoints)
+
+        save_events = make_save_events(npi, savepoints)
+        events = make_events(npi, fn_effect_on, fn_effect_off, savepoints)
+
         if log_rt
-            rt_logger = make_rt_logger(shared_data.savepoints)
+            rt_logger = make_rt_logger(savepoints)
             cb_set = CallbackSet(events, save_events, rt_logger)
         else
             cb_set = CallbackSet(events, save_events)
         end
     end
 
-    sol = daedalus_internal(
-        n_runs, shared_data, param_sets, cb_set
-    )
+    # get the solution
+    ode_solution = solve(ode_problem, callback = cb_set, saveat = savepoints)
 
-    return (sol = sol, npi = npi, cbset = cb_set, r0 = r0)
+    # Handle saved values - only reactive NPIs have saved_values
+    saved_vals = if isnothing(npi)
+        nothing
+    elseif isa(npi, Npi)
+        npi.saved_values
+    else  # TimedNpi
+        nothing
+    end
+
+    return (sol = ode_solution, saves = saved_vals, npi = npi)
 end
