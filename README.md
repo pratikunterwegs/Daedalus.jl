@@ -26,7 +26,7 @@ Pkg.add(url="git@github.com:pratikunterwegs/Daedalus.jl.git")
 ```julia
 using Daedalus
 
-daedalus(country="Australia", r0=5.0, time_end=600.0)
+daedalus("Australia", 5.0, time_end=600.0)
 ```
 
 ## Related projects
