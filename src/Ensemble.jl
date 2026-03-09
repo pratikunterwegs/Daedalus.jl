@@ -13,7 +13,6 @@ and optional multi-threading.
 # Arguments
 - `country`: Country to model (String or CountryData struct)
 - `r0::Vector{Float64}`: Vector of reproduction numbers to simulate
-- `n_threads::Int`: Number of threads for parallel execution (default 1)
 - Other arguments: Same as scalar daedalus() function
 
 # Returns

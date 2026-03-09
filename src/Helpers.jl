@@ -8,14 +8,29 @@ using ..Constants
 using LinearAlgebra
 
 """
-    get_beta(
-        cm, r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
-    )
-Calculate the transmission rate `beta` given the contact matrix and other parameters.
+    get_beta(cm, r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is)::Union{Float64, Vector{Float64}}
+
+Calculate transmission rate(s) `beta` given a contact matrix and epidemiological parameters.
+
+Uses the next-generation matrix (NGM) method to compute beta values that achieve
+the target basic reproduction number(s) R₀.
+
+# Arguments
+- `cm::Matrix{Float64}`: Contact matrix (n_groups × n_groups)
+- `r0::Union{Float64, Vector{Float64}}`: Target basic reproduction number(s)
+- `sigma::Float64`: Rate of progression from exposed to infectious
+- `p_sigma::Float64`: Proportion of exposed who develop symptoms
+- `epsilon::Float64`: Reduction factor for asymptomatic transmission
+- `gamma_Ia::Float64`: Recovery rate for asymptomatic infectious
+- `gamma_Is::Float64`: Recovery rate for symptomatic infectious
+
+# Returns
+- If `r0` is a scalar: returns a single `Float64` value for beta
+- If `r0` is a vector: returns a `Vector{Float64}` of beta values
 """
 function get_beta(cm::Matrix{Float64}, r0::Union{Float64, Vector{Float64}},
         sigma::Float64, p_sigma::Float64, epsilon::Float64,
-        gamma_Ia::Float64, gamma_Is::Float64)
+        gamma_Ia::Float64, gamma_Is::Float64)::Union{Float64, Vector{Float64}}
     n_groups = size(cm)[1]
     sigma_1 = sigma * (1.0 - p_sigma)
     sigma_2 = sigma * p_sigma
@@ -50,14 +65,29 @@ function get_beta(cm::Matrix{Float64}, r0::Union{Float64, Vector{Float64}},
 end
 
 """
-    get_ngm(
-        cm, beta, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
-    )
-Calculate the next-generation matrix (NGM) given the contact matrix and other parameters.
+    get_ngm(cm, beta, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is)::Union{Matrix{Float64}, Vector{Matrix{Float64}}}
+
+Calculate the next-generation matrix (NGM) given a contact matrix and transmission rate(s).
+
+The NGM is used to compute the effective reproduction number Rt accounting for
+current susceptibility levels in the population.
+
+# Arguments
+- `cm::Matrix{Float64}`: Contact matrix (n_groups × n_groups)
+- `beta::Union{Float64, Vector{Float64}}`: Transmission rate(s)
+- `sigma::Float64`: Rate of progression from exposed to infectious
+- `p_sigma::Float64`: Proportion of exposed who develop symptoms
+- `epsilon::Float64`: Reduction factor for asymptomatic transmission
+- `gamma_Ia::Float64`: Recovery rate for asymptomatic infectious
+- `gamma_Is::Float64`: Recovery rate for symptomatic infectious
+
+# Returns
+- If `beta` is a scalar: returns a single `Matrix{Float64}`
+- If `beta` is a vector: returns a `Vector{Matrix{Float64}}` of NGMs
 """
 function get_ngm(cm::Matrix{Float64}, beta::Float64,
         sigma::Float64, p_sigma::Float64, epsilon::Float64,
-        gamma_Ia::Float64, gamma_Is::Float64)
+        gamma_Ia::Float64, gamma_Is::Float64)::Matrix{Float64}
     n_groups = size(cm)[1]
     sigma_1 = sigma * (1.0 - p_sigma)
     sigma_2 = sigma * p_sigma
@@ -87,17 +117,34 @@ function get_ngm(cm::Matrix{Float64}, beta::Float64,
     return ngm
 end
 
+"""
+    get_ngm(cm::Matrix, beta::Vector, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is)::Vector{Matrix{Float64}}
+
+Vector-dispatch version: compute one NGM for each transmission rate in `beta`.
+"""
 function get_ngm(cm::Matrix{Float64}, beta::Vector{Float64},
         sigma::Float64, p_sigma::Float64, epsilon::Float64,
-        gamma_Ia::Float64, gamma_Is::Float64)
+        gamma_Ia::Float64, gamma_Is::Float64)::Vector{Matrix{Float64}}
     return [get_ngm(cm, beta_i, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is)
             for
             beta_i in beta]
 end
 
 """
-    sum_by_age(state, index)
-Sum the state array over economic groups into age groups for a given compartment index.
+    sum_by_age(state, index)::Vector{Float64}
+
+Sum state array over economic groups into age groups for a given compartment.
+
+Takes the full state array and sums all economic sector rows into the working-age
+group, producing a 4-element vector (one per age group).
+
+# Arguments
+- `state`: 3D state array (N_TOTAL_GROUPS × N_COMPARTMENTS × N_VACCINE_STRATA)
+- `index`: Compartment index (integer)
+
+# Returns
+A `Vector{Float64}` of length 4 (one value per age group) with economic sectors
+summed into the working-age group.
 """
 function sum_by_age(state, index)::Vector{Float64}
     # subset indices

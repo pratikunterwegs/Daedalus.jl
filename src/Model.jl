@@ -13,10 +13,12 @@ using .Helpers
 using .DaedalusStructs
 
 """
-    daedalus()
+    daedalus(country, r0; kwargs...)::Union{NamedTuple, Vector{NamedTuple}}
 
-Model the progression of a daedalus epidemic with multiple optional vaccination
-strata.
+Model the progression of an epidemic with optional multi-threading over parameter values.
+
+Solves the DAEDALUS compartmental epidemiological model for a specified country
+and basic reproduction number(s), with optional non-pharmaceutical interventions.
 
 # Arguments
 - `country`: Country to model. Can be:
@@ -72,21 +74,47 @@ result = daedalus("Australia", 2.5, time_end=200.0, npi=npi)
 results = daedalus("Australia", [1.0, 2.0, 3.0], time_end=200.0)
 # Returns: Vector of results, one per R0 value
 ```
+
+# Returns
+- Scalar r0: A `NamedTuple` with fields:
+  - `sol`: ODE solution object
+  - `saves`: Saved values from reactive NPI (or nothing)
+  - `npi`: The NPI used (or nothing)
+- Vector r0: A `Vector{NamedTuple}`, one per r0 value, with additional field:
+  - `r0`: The r0 value for that run
 """
 
 """
-    prepare_shared_data(cd::DataLoader.CountryData, time_end::Float64, 
-        increment::Float64)
+    prepare_shared_data(cd::DataLoader.CountryData, time_end::Float64,
+        increment::Float64)::NamedTuple
 
-Prepare shared data that is computed once and reused across all parameter sets.
-Returns a NamedTuple containing initial state, contact matrices, demographics,
-timespan, and callbacks.
+Prepare country/structure data that is computed once and reused across all parameter sets.
+
+Expensive operations (contact matrix processing, demographics aggregation) are
+performed once rather than repeated for each r0 value in ensemble runs.
+
+# Arguments
+- `cd::DataLoader.CountryData`: Country demographic and economic data
+- `time_end::Float64`: Final simulation time
+- `increment::Float64`: Savepoint interval (typically 1.0 for daily output)
+
+# Returns
+A `NamedTuple` with fields:
+- `init_state`: Initial epidemic state (with appended Rt slot)
+- `contacts_unscaled`: Raw contact matrix
+- `cw`: Worker contact rates
+- `contacts_array`: 3D contact array for ODE
+- `cm_temp`: Temporary contact matrix workspace
+- `settings`: Number of contact settings
+- `demog`: Population vector
+- `timespan`: Tuple (0.0, time_end)
+- `savepoints`: Range of savepoint times
 """
 function prepare_shared_data(
         cd::DataLoader.CountryData,
         time_end::Float64,
         increment::Float64
-)
+)::NamedTuple
     # All of these are expensive and independent of infection parameters
     init_state = initial_state(cd)
 
@@ -119,24 +147,36 @@ function prepare_shared_data(
 end
 
 """
-    daedalus_internal(n_runs, shared_data, param_sets, cb_set)
+    daedalus_internal(n_runs, shared_data, param_sets, cb_set)::EnsembleSolution
 
-Internal function that orchestrates single or multi-run ODE solving.
-Handles both scalar r0 and vector r0 cases.
-Uses efficient ODE problem reuse via remake() and optional multi-threading.
+Internal function that orchestrates multi-run ODE solving using EnsembleProblem.
+
+Uses SciMLBase.EnsembleProblem with EnsembleThreads() solver for efficient
+parallel execution across multiple parameter sets. The base ODE problem is
+created once, then remade for each trajectory with its corresponding parameters.
 
 # Arguments
-- `n_runs`: Number of parameter sets
-- `shared_data`: Pre-computed country/structure data from prepare_shared_data()
-- `param_sets`: Collection of parameter sets.
-- `cb_set`: Callback set (pre-constructed by caller)
+- `n_runs::Int`: Number of parameter sets / trajectories
+- `shared_data::NamedTuple`: Pre-computed country data from `prepare_shared_data()`
+- `param_sets`: Array of Params structs, one per trajectory
+- `cb_set::CallbackSet`: Callback set (pre-constructed by caller)
+
+# Returns
+An `EnsembleSolution` containing solutions for all trajectories at specified savepoints
+
+# Details
+The function constructs an `EnsembleProblem` with:
+- A single base ODE problem created from the first parameter set
+- A `prob_func` that remakes the problem with the i-th parameter set
+- `EnsembleThreads()` solver for multi-threaded execution (respects Julia's thread count)
+- Savepoints from `shared_data.savepoints`
 """
 function daedalus_internal(
         n_runs::Int,
         shared_data::NamedTuple,
         param_sets,
         cb_set::CallbackSet
-)
+)::EnsembleSolution
     iRt = Daedalus.Constants.get_indices("Rt")
 
     # create base problem with initial state

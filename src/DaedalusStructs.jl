@@ -63,11 +63,22 @@ struct DsStateData <: StateData
     end
 end
 
+"""
+    get_indices(x::StateData)
+
+Get state vector indices for the compartment in a StateData struct.
+Delegates to `Constants.get_indices()`.
+"""
 function get_indices(x::StateData)
     return Constants.get_indices(x.name)
 end
 
-function get_comp_threshold(x::StateData)
+"""
+    get_comp_threshold(x::StateData)::Float64
+
+Get the threshold value from a StateData struct.
+"""
+function get_comp_threshold(x::StateData)::Float64
     return x.value
 end
 

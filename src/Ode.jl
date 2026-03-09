@@ -12,8 +12,29 @@ using StaticArrays
 """
     daedalus_ode!(du, u, p, t)
 
-The ODE system for the DAEDALUS model. This function is intended to be called
-    internally from `daedalus`.
+Compute derivatives for the DAEDALUS epidemic ODE system.
+
+The core compartmental model with 7 compartments (S, E, Is, Ia, H, R, D) across
+49 demographic groups (4 age groups + 45 economic sectors) and 2 vaccine strata.
+Implements force-of-infection, disease progression, vaccination, and death.
+
+# Arguments
+- `du::Array`: Pre-allocated output array (derivatives), same shape as `u`
+- `u::Array`: State vector (length = N_TOTAL_GROUPS × N_COMPARTMENTS × N_VACCINE_STRATA + 1)
+- `p::Params`: Parameter struct containing contact matrices, rates, and NGM
+- `t::Number`: Current simulation time
+
+# State layout
+The state array is reshaped internally as (49, 7, 2) where:
+- Dimension 1: Demographic groups (4 age + 45 economic sectors)
+- Dimension 2: Compartments (S, E, Is, Ia, H, R, D)
+- Dimension 3: Vaccine strata (unvaccinated, vaccinated)
+- Final element: Effective reproduction number Rt (updated by callbacks)
+
+# Details
+This function is called internally by OrdinaryDiffEq's ODE solvers. It computes
+force-of-infection from the contact matrix and current infectious compartments,
+then updates all compartments according to the SEIR-like disease dynamics.
 """
 function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
     # du auto-magically takes the dims and type of u (?)
