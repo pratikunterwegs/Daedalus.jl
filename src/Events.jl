@@ -163,7 +163,7 @@ function get_coef(x::Npi)::Float64
 end
 
 """
-    make_save_events(x::Npi, savepoints)::SavingCallback
+    make_save_events(x::Npi, savepoints)
 
 Create a SavingCallback that records state values at specified timepoints.
 
@@ -177,7 +177,7 @@ at each savepoint, storing results in the Npi's `saved_values` field.
 # Returns
 A `SavingCallback` that writes to `x.saved_values`
 """
-function make_save_events(x::Npi, savepoints)::SavingCallback
+function make_save_events(x::Npi, savepoints)
     # the saving callbacks save to x.saved_values
     savingcb = SavingCallback(
         (u, t, integrator) -> begin
@@ -198,7 +198,7 @@ function make_save_events(x::Npi, savepoints)::SavingCallback
 end
 
 """
-    make_rt_logger(savepoints)::PresetTimeCallback
+    make_rt_logger(savepoints)
 
 Create a callback that computes and logs the effective reproduction number Rt.
 
@@ -211,7 +211,7 @@ savepoint. Maintains a warm-start eigenvector for improved convergence.
 # Returns
 A `PresetTimeCallback` that updates the Rt state variable at each savepoint
 """
-function make_rt_logger(savepoints)::PresetTimeCallback
+function make_rt_logger(savepoints)
     # make a PresetTimeCallback that updates u at integerish times
     iRt = Constants.get_indices("Rt")
 
@@ -269,7 +269,7 @@ timed_npi = TimedNpi([10.0, 30.0], [20.0, 40.0], [0.5, 0.3], "two_phase")
 callbacks = make_timed_npi_callbacks(timed_npi)
 ```
 """
-function make_timed_npi_callbacks(npi::DaedalusStructs.TimedNpi)
+function make_timed_npi_callbacks(npi::DaedalusStructs.TimedNpi)::CallbackSet
     callbacks = []
 
     for (t_on, t_off, coef) in zip(npi.start_times, npi.end_times, npi.coefs)
