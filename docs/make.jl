@@ -14,7 +14,7 @@ makedocs(;
         assets = String[],
         size_threshold_ignore = [
             "ensemble.md",
-            "country_data.md",  # prevent HTML size errors during docs build
+            "country_data.md"  # prevent HTML size errors during docs build
         ]
     ),
     checkdocs = :exports,
