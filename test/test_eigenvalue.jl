@@ -53,9 +53,18 @@ using Test
         gamma_Ia = 0.476
         gamma_Is = 0.25
 
+        aus = Daedalus.DataLoader.get_country("Australia")
+        contacts_unscaled = Daedalus.Data.total_contacts(
+            Daedalus.Data.prepare_contacts(aus; scaled = false)
+        )
+
+        # NOTE: get_ngm requires beta, not R0
+        beta = Daedalus.Helpers.get_beta(
+            contacts_unscaled, r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
+        )
         ngm = Daedalus.Helpers.get_ngm(
-            Daedalus.DataLoader.get_country("Australia").contact_matrix,
-            r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
+            contacts_unscaled,
+            beta, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is
         )
 
         λ_dom = Daedalus.Helpers.dominant_eigenvalue(ngm)
@@ -166,8 +175,8 @@ end
     @testset "Rt logging with power iteration" begin
         # Run a short simulation with Rt logging enabled
         result = Daedalus.daedalus(
-            country = "Australia",
-            r0 = 2.0,
+            "Australia",
+            2.0,
             time_end = 50.0,
             increment = 1.0,
             log_rt = true
@@ -194,8 +203,8 @@ end
         npi = Daedalus.DaedalusStructs.Npi(20000.0, (coef = 0.7,))
 
         result = Daedalus.daedalus(
-            country = "Australia",
-            r0 = 3.0,
+            "Australia",
+            3.0,
             time_end = 100.0,
             increment = 1.0,
             npi = npi,
