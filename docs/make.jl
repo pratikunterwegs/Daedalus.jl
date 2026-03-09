@@ -24,6 +24,7 @@ makedocs(;
         "Implementing interventions" => "npis.md",
         "Multiple contact settings" => "settings.md",
         "Benchmarking" => "benchmarking.md",
+        "Parallelisation" => "parallelisation.md",
         "Country and pathogen data" => "country_data.md",
         "Implementing reactive events" => "musings.md",
         "Index" => "pkg_index.md",
