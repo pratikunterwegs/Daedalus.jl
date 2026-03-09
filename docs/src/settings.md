@@ -39,7 +39,7 @@ Daedalus.Data.get_settings(cd_multi) # vector of two → 2
 Pass the modified struct directly to [`daedalus`](@ref):
 
 ```@example multi_settings
-result_multi = daedalus(country = cd_multi, r0 = 2.5, time_end = 300.0)
+result_multi = daedalus(cd_multi, 2.5, time_end = 300.0)
 
 times  = Daedalus.Outputs.get_times(result_multi)
 deaths = Daedalus.Outputs.get_values(result_multi, "D", 1)
@@ -65,8 +65,8 @@ Adding a second identical matrix doubles the total contacts, which halves `β`, 
 cd_double = deepcopy(cd)
 cd_double.contact_matrix = [cm, cm]  # two equal settings
 
-result_single = daedalus(country = cd, r0 = 2.5, time_end = 300.0, log_rt = false)
-result_double = daedalus(country = cd_double, r0 = 2.5, time_end = 300.0, log_rt = false)
+result_single = daedalus(cd, 2.5, time_end = 300.0, log_rt = false)
+result_double = daedalus(cd_double, 2.5, time_end = 300.0, log_rt = false)
 
 d_single = last(Daedalus.Outputs.get_values(result_single, "D", 1))
 d_double = last(Daedalus.Outputs.get_values(result_double, "D", 1))
