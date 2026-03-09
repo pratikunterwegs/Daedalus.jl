@@ -19,9 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Multiple dispatch implementation for `daedalus()`: scalar and vector R0 inputs are now handled via distinct function methods
 - Vector R0 dispatch in file `src/Ensemble.jl`: `daedalus(country, r0::Vector{Float64}; ...)` runs multiple R0 values in a single call
-- Multi-threaded execution: New `n_threads` parameter (default `1`) enables parallel ODE solving across multiple r0 values using `Base.Threads`
+- Implementation of `SciMLBase.EnsembleProblem` in `src/Model.jl` (`daedalus_internal` function): uses `EnsembleThreads()` solver with `prob_func` wrapper to efficiently orchestrate multi-run ODE solving. The ensemble approach reuses a base ODE problem and remakes it for each trajectory with its corresponding parameters, enabling automatic thread-safe parallel execution across multiple r0 values without explicit locking
 - Helper functions `prepare_shared_data()` and `daedalus_internal()` exported from Model.jl for use by ensemble dispatch
-- Documentation page `docs/src/ensemble.md` with examples for running multiple R0 values in parallel, parameter sweeps, and comparing epidemic dynamics across scenarios
+- Comprehensive function documentation improvements: added or enhanced docstrings for all exported functions in `Helpers.jl`, `Data.jl`, `Events.jl`, `Model.jl`, and `Ode.jl` with argument lists and return type annotations
 
 ## [0.0.4] - 2026-03-02
 

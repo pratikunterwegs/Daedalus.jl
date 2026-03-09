@@ -14,12 +14,20 @@ export make_state_condition,
        get_coef, make_save_events, make_rt_logger, make_timed_npi_callbacks
 
 """
-    make_cond(threshold)::Function
+    make_state_condition(threshold, idx, comparison)::Function
 
-Factory function for conditions. Makes a function that checks whether a root is
-    found at the sum of a state index. Passing `crossing = "up"` checks for an
-    increasing root (-1 to +1), while `crossing = "down"` checks for a
-    decreasing root (+1 to -1).
+Factory function that creates a condition function for event callbacks.
+
+Returns a function that checks whether a state sum crosses a threshold at the
+specified indices. Used to trigger events when compartment totals reach certain values.
+
+# Arguments
+- `threshold::Float64`: The threshold value for comparison
+- `idx`: Indices into the state vector to sum
+- `comparison::Function`: Comparison function (e.g., `<`, `>`)
+
+# Returns
+A `Function` that takes `(u, t, integrator)` and returns 0.0 if condition is met, 1.0 otherwise
 """
 function make_state_condition(threshold, idx, comparison::Function)::Function
     function fn_cond(u, t, integrator)
@@ -35,18 +43,40 @@ function make_state_condition(threshold, idx, comparison::Function)::Function
 end
 
 """
-    make_param_changer(param_name, func, coef)
+    make_param_changer(param_name, func, coef)::Function
 
-A function factory to generate effect functions.
+Create a callback function that modifies a parameter during ODE integration.
+
+Generates an effect function that applies `func` to the current parameter value
+multiplied by `coef`, storing the result in `param_name_now`.
+
+# Arguments
+- `param_name::String`: Name of the parameter to modify (e.g., `"beta"`)
+- `func::Function`: Function to apply (e.g., `.*` for multiplication)
+- `coef`: Coefficient to apply via `func`
+
+# Returns
+A `Function` that takes an `integrator` and modifies the parameter in-place
 """
-function make_param_changer(param_name, func, coef)
+function make_param_changer(param_name, func, coef)::Function
     function effect!(integrator)
         new_value = func(getproperty(integrator.p, Symbol(param_name)), coef)
         setproperty!(integrator.p, Symbol(param_name * "_now"), new_value)
     end
 end
 
-function make_param_reset(param_name)
+"""
+    make_param_reset(param_name)::Function
+
+Create a callback function that resets a parameter to its original value.
+
+# Arguments
+- `param_name::String`: Name of the parameter to reset (e.g., `"beta"`)
+
+# Returns
+A `Function` that takes an `integrator` and resets `param_name_now` to the original `param_name`
+"""
+function make_param_reset(param_name)::Function
     function effect!(integrator)
         original_value = getproperty(integrator.p, Symbol(param_name))
         setproperty!(integrator.p, Symbol(param_name * "_now"), original_value)
@@ -54,11 +84,23 @@ function make_param_reset(param_name)
 end
 
 """
-    make_events(x::Npi)
+    make_events(x::Npi, effect_on, effect_off, savepoints)::CallbackSet
 
-Make a CallbackSet from a Npi struct.
+Create a CallbackSet of event callbacks for a reactive (state-dependent) NPI.
+
+Generates paired callbacks that trigger intervention activation and deactivation
+based on epidemic state (e.g., hospitalizations reaching a threshold).
+
+# Arguments
+- `x::Npi`: Reactive NPI struct
+- `effect_on::Function`: Callback to execute when intervention activates
+- `effect_off::Function`: Callback to execute when intervention deactivates
+- `savepoints`: Time points at which to check state for triggers
+
+# Returns
+A `CallbackSet` with on/off event callbacks
 """
-function make_events(x::Npi, effect_on::Function, effect_off::Function, savepoints)
+function make_events(x::Npi, effect_on::Function, effect_off::Function, savepoints)::CallbackSet
     idx_on = DaedalusStructs.get_indices(x.params.comp_on)
     idx_off = DaedalusStructs.get_indices(x.params.comp_off)
 
@@ -105,17 +147,37 @@ function make_events(x::Npi, effect_on::Function, effect_off::Function, savepoin
     return CallbackSet(cb_on, cb_off)
 end
 
-get_coef(x::Npi) = begin
+"""
+    get_coef(x::Npi)::Float64
+
+Extract the transmission reduction coefficient from an Npi struct.
+
+# Arguments
+- `x::Npi`: Reactive NPI struct
+
+# Returns
+The transmission coefficient (typically in [0, 1])
+"""
+function get_coef(x::Npi)::Float64
     return x.coefs.coef
 end
 
 """
-    make_save_events(x::Npi, savepoints)
+    make_save_events(x::Npi, savepoints)::SavingCallback
 
-Make a CallbackSet of SavingCallbacks from an Npi struct. `savepoints` is
-    expected to be a float range.
+Create a SavingCallback that records state values at specified timepoints.
+
+Captures NPI-on state and values of the NPI trigger and deactivation compartments
+at each savepoint, storing results in the Npi's `saved_values` field.
+
+# Arguments
+- `x::Npi`: Reactive NPI struct with `saved_values` field
+- `savepoints`: Time points at which to save state values
+
+# Returns
+A `SavingCallback` that writes to `x.saved_values`
 """
-function make_save_events(x::Npi, savepoints)
+function make_save_events(x::Npi, savepoints)::SavingCallback
     # the saving callbacks save to x.saved_values
     savingcb = SavingCallback(
         (u, t, integrator) -> begin
@@ -136,11 +198,20 @@ function make_save_events(x::Npi, savepoints)
 end
 
 """
-    make_rt_logger(savepoints)
+    make_rt_logger(savepoints)::PresetTimeCallback
 
-Make a PresetTimeCallback to update Rt.
+Create a callback that computes and logs the effective reproduction number Rt.
+
+Uses power iteration on the susceptibility-adjusted NGM to compute Rt at each
+savepoint. Maintains a warm-start eigenvector for improved convergence.
+
+# Arguments
+- `savepoints`: Time points at which to compute and log Rt
+
+# Returns
+A `PresetTimeCallback` that updates the Rt state variable at each savepoint
 """
-function make_rt_logger(savepoints)
+function make_rt_logger(savepoints)::PresetTimeCallback
     # make a PresetTimeCallback that updates u at integerish times
     iRt = Constants.get_indices("Rt")
 

@@ -12,15 +12,22 @@ export prepare_contacts, contacts3d, get_settings, total_contacts,
        prepare_demog, initial_state
 
 """
-    worker_contacts()
+    worker_contacts(workers; scaled=true)::Vector{Float64}
 
 Get per-capita social contacts within each economic sector.
 
 Data sourced from `sectorcontacts.csv` via `DataLoader`. When `scaled=true`
 (default), values are divided element-wise by sector workforce counts so that
 the result is contacts per worker (as used in the ODE force-of-infection).
+
+# Arguments
+- `workers`: Worker counts for each of the 45 economic sectors
+- `scaled::Bool`: If true (default), contacts are divided by worker counts
+
+# Returns
+A `Vector{Float64}` of length 45 with per-capita within-sector contact rates
 """
-function worker_contacts(workers; scaled = true)
+function worker_contacts(workers; scaled = true)::Vector{Float64}
     x = Vector{Float64}(DataLoader.get_economic_contacts().contacts_workplace)
 
     if scaled
@@ -30,7 +37,21 @@ function worker_contacts(workers; scaled = true)
     return x
 end
 
-function consumer_worker_contacts(demography; scaled = true)
+"""
+    consumer_worker_contacts(demography; scaled=true)::Matrix{Float64}
+
+Get the consumer-worker contact matrix (45 sectors × 4 age groups).
+
+Represents contacts between consumer-sector workers and age groups.
+
+# Arguments
+- `demography::Vector{Float64}`: Population vector for 4 age groups
+- `scaled::Bool`: If true (default), contacts are scaled by age-group demographics
+
+# Returns
+A `Matrix{Float64}` of size (45, 4) with consumer-worker contact rates
+"""
+function consumer_worker_contacts(demography; scaled = true)::Matrix{Float64}
     ccw = repeat([1.0], N_ECON_GROUPS * N_AGE_GROUPS)
     ccw = reshape(ccw, N_ECON_GROUPS, N_AGE_GROUPS)
 
@@ -43,15 +64,22 @@ function consumer_worker_contacts(demography; scaled = true)
 end
 
 """
-    prepare_community_contacts()
+    prepare_community_contacts(cm; scaled=true)::Matrix{Float64}
 
 Get a 49×49 community-only contact matrix for all age-groups and economic
 sectors. Unlike `prepare_contacts`, this function does **not** add
 within-sector workplace contacts or consumer-worker contacts to the matrix.
 Those routes are kept separate for use in the ODE force-of-infection
 calculation (see `plan_ode.md`).
+
+# Arguments
+- `cm::Matrix{Float64}`: 4×4 contact matrix for age groups
+- `scaled::Bool`: If true (default), contact matrix is scaled by demographics
+
+# Returns
+A `Matrix{Float64}` of size (49, 49) with community contacts only
 """
-function prepare_community_contacts(cm; scaled = true)
+function prepare_community_contacts(cm; scaled = true)::Matrix{Float64}
     cm_x = ones(N_TOTAL_GROUPS, N_TOTAL_GROUPS) .* cm[i_WORKING_AGE, i_WORKING_AGE]
     cm_x[i_AGE_GROUPS, i_AGE_GROUPS] = cm
     cm_x[i_AGE_GROUPS, i_ECON_GROUPS] .= cm[:, i_WORKING_AGE]
@@ -66,13 +94,21 @@ function prepare_community_contacts(cm; scaled = true)
 end
 
 """
-    prepare_demog()
+    prepare_demog(demog, workers)::Vector{Float64}
 
-Get a population vector for all age-groups and economic sectors for the force of
-    infection calculation for community infections.
+Get a 49-element population vector for all age-groups and economic sectors.
+
+Concatenates 4 age groups with 45 economic sector worker counts to form the
+population vector used in force-of-infection calculations.
+
+# Arguments
+- `demog::Vector{Float64}`: Demographics (4 age groups)
+- `workers::Vector{Int}`: Worker counts (45 economic sectors)
+
+# Returns
+A `Vector{Float64}` of length 49 (4 age groups + 45 workers)
 """
-# Function to prepare 49 element demography vector for I/N in FOI calculation
-function prepare_demog(demog, workers)
+function prepare_demog(demog, workers)::Vector{Float64}
     return [demog; workers]
 end
 
@@ -105,7 +141,21 @@ function worker_contacts(cd::CountryData; scaled = true)
     return x
 end
 
-function expand_contacts(cm::Matrix{Float64})
+"""
+    expand_contacts(cm::Matrix{Float64})::Matrix{Float64}
+
+Expand a 4×4 contact matrix to 49×49 covering all age groups and economic sectors.
+
+Maps the 4×4 age-group contact matrix to the full 49×49 population, assuming
+economic sectors adopt the contact patterns of the working-age group.
+
+# Arguments
+- `cm::Matrix{Float64}`: 4×4 contact matrix for age groups
+
+# Returns
+A `Matrix{Float64}` of size (49, 49)
+"""
+function expand_contacts(cm::Matrix{Float64})::Matrix{Float64}
     cm_x = ones(N_TOTAL_GROUPS, N_TOTAL_GROUPS) .* cm[i_WORKING_AGE, i_WORKING_AGE]
     cm_x[i_AGE_GROUPS, i_AGE_GROUPS] = cm
     cm_x[i_AGE_GROUPS, i_ECON_GROUPS] .= cm[:, i_WORKING_AGE]
@@ -210,6 +260,17 @@ function contacts3d(cd::CountryData)::Array{Float64, 3}
     end
 end
 
+"""
+    get_settings(cd::CountryData)::Int
+
+Return the number of contact matrix settings (closure strategies) for a country.
+
+# Arguments
+- `cd::CountryData`: Country data struct
+
+# Returns
+The number of contact matrix settings: typically 1 (single matrix) or >1 (multiple scenarios)
+"""
 function get_settings(cd::CountryData)::Int
     isa(cd.contact_matrix, Vector) ? length(cd.contact_matrix) : 1
 end
