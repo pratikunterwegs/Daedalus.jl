@@ -34,7 +34,9 @@ using Daedalus
 using Plots
 
 # pump up r0 to get peak within 50 days
-data = daedalus("Canada", 5.0, time_end=600.0);
+infection = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+infection.r0 = 5.0
+data = daedalus("Canada", infection, time_end=600.0);
 
 # plot exposed group
 times = Daedalus.Outputs.get_times(data)
@@ -66,7 +68,9 @@ using Daedalus
 using Plots
 
 # Run the model using UK demography and contact patterns
-data_uk = daedalus("United Kingdom", 2.5, time_end=600.0)
+infection_uk = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+infection_uk.r0 = 2.5
+data_uk = daedalus("United Kingdom", infection_uk, time_end=600.0)
 
 times_uk = Daedalus.Outputs.get_times(data_uk)
 exposed_uk = Daedalus.Outputs.get_values(data_uk, "E", 1)
