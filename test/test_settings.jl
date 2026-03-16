@@ -38,7 +38,9 @@
     @testset "daedalus runs with two equal settings" begin
         cd2 = deepcopy(cd)
         cd2.contact_matrix = [cm, cm]
-        result = daedalus(cd2, 2.5, time_end = 100.0, log_rt = false)
+        infection = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+        infection.r0 = 2.5
+        result = daedalus(cd2, infection, time_end = 100.0, log_rt = false)
         @test length(result.sol.t) == 101
         @test all(isfinite, result.sol.u[end])
     end
@@ -53,9 +55,12 @@
         # the same r0 is used.
         cd2 = deepcopy(cd)
         cd2.contact_matrix = [cm, cm]
-        r0 = 2.5
-        result_1 = daedalus(cd, r0, time_end = 300.0, log_rt = false)
-        result_2 = daedalus(cd2, r0, time_end = 300.0, log_rt = false)
+        infection_1 = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+        infection_1.r0 = 2.5
+        infection_2 = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+        infection_2.r0 = 2.5
+        result_1 = daedalus(cd, infection_1, time_end = 300.0, log_rt = false)
+        result_2 = daedalus(cd2, infection_2, time_end = 300.0, log_rt = false)
         deaths_1 = last(Daedalus.Outputs.get_values(result_1, "D", 1))
         deaths_2 = last(Daedalus.Outputs.get_values(result_2, "D", 1))
         @test deaths_2 ≈ deaths_1 rtol = 1e-3

@@ -1,5 +1,7 @@
 @testset "Outputs.get_values" begin
-    output = daedalus("Australia", 2.5, time_end = 100.0)
+    infection = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+    infection.r0 = 2.5
+    output = daedalus("Australia", infection, time_end = 100.0)
     tmax = 100
 
     @testset "daily values (timebin=1)" begin
@@ -19,7 +21,9 @@
     end
 
     @testset "bin alignment when tmax divisible by timebin" begin
-        output90 = daedalus("Australia", 2.5, time_end = 90.0)
+        infection90 = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+        infection90.r0 = 2.5
+        output90 = daedalus("Australia", infection90, time_end = 90.0)
         daily = Daedalus.Outputs.get_values(output90, "H", 1)
         binned = Daedalus.Outputs.get_values(output90, "H", 90)
         @test length(binned) == 1

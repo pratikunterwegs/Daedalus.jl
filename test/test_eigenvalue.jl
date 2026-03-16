@@ -174,13 +174,15 @@ end
 @testset "Rt calculation in make_rt_logger" begin
     @testset "Rt logging with power iteration" begin
         # Run a short simulation with Rt logging enabled
+        infection = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+        infection.r0 = 2.0
         result = Daedalus.daedalus(
             "Australia",
-            2.0,
+            infection,
             time_end = 50.0,
             increment = 1.0,
             log_rt = true
-        )
+        );
 
         # Extract Rt values
         iRt = Daedalus.Constants.get_indices("Rt")
@@ -202,9 +204,11 @@ end
         # Create a simple NPI for testing
         npi = Daedalus.DaedalusStructs.Npi(20000.0, (coef = 0.7,))
 
+        infection = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+        infection.r0 = 3.0
         result = Daedalus.daedalus(
             "Australia",
-            3.0,
+            infection,
             time_end = 100.0,
             increment = 1.0,
             npi = npi,
