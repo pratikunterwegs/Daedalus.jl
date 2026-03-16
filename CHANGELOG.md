@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (Breaking)
+- **`daedalus()` function signature refactored**: second positional argument now takes infection parameters (`infection`) instead of scalar/vector `r0`. Users must pass parameters via `InfectionData` object rather than individual keyword arguments
+  - **Old interface**: `daedalus(country, r0::Float64; sigma=..., epsilon=..., eta=..., ...)`
+  - **New interface**: `daedalus(country, infection; npi=..., log_rt=..., time_end=..., increment=..., n_threads=...)`
+- Removed all infection-parameter keyword arguments: `sigma`, `p_sigma`, `epsilon`, `rho`, `eta`, `omega`, `gamma_Ia`, `gamma_Is`, `gamma_H`, `nu`
+  - All epidemiological parameters now encapsulated in `InfectionData` object
+  - Users customize parameters by fetching `InfectionData` and modifying fields before calling `daedalus()`
+
+### Added
+- New dispatch methods for `daedalus()`:
+  1. String pathogen name: `daedalus(country, "sars-cov-2 delta"; ...)`
+  2. Single `InfectionData`: `daedalus(country, infection_obj; ...)`
+  3. Vector `InfectionData`: `daedalus(country, [inf1, inf2, ...]; ...)`
+- `extract_infection_params()` helper function to extract and expand epidemiological parameters from `InfectionData`
+- `InfectionData` is mutable, allowing users to customize parameters post-fetch: `inf = get_pathogen("sars-cov-2 delta"); inf.r0 = 2.5`
+- **Infection names are normalized to lowercase**: all pathogen names are stored and looked up as lowercase strings (e.g., `"sars-cov-2 delta"`, `"influenza 2009"`)
+
+### Migration Guide
+```julia
+# Old (no longer works):
+result = daedalus("Australia", 2.5, sigma=0.217, epsilon=0.58, time_end=200.0)
+
+# New (string pathogen, lowercase names):
+result = daedalus("Australia", "sars-cov-2 delta", time_end=200.0)
+
+# New (custom infection):
+infection = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+infection.r0 = 2.5
+result = daedalus("Australia", infection, time_end=200.0)
+
+# New (vector of infections):
+infections = [
+    Daedalus.DataLoader.get_pathogen("sars-cov-2 delta"),
+    Daedalus.DataLoader.get_pathogen("influenza 2009")
+]
+results = daedalus("Australia", infections, time_end=200.0)
+```
+
 ## [0.0.5] - 2026-03-09
 
 ### Changed
