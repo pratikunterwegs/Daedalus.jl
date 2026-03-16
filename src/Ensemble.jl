@@ -26,7 +26,8 @@ A `Vector{NamedTuple}` where each element contains:
 - `npi`: The NPI specification used
 - `r0`: The R0 value for this infection
 """
-function daedalus(country::Union{String, DataLoader.CountryData}, infections::Vector{DataLoader.InfectionData};
+function daedalus(country::Union{String, DataLoader.CountryData},
+        infections::Vector{DataLoader.InfectionData};
         npi::Union{Npi, TimedNpi, Nothing} = nothing,
         log_rt::Bool = true,
         time_end::Float64 = 100.0,
@@ -112,7 +113,8 @@ function daedalus(country::Union{String, DataLoader.CountryData}, infections::Ve
     end
 
     # Solve ensemble
-    ensemble_solution = daedalus_internal(length(r0_values), shared_data, param_sets, cb_set)
+    ensemble_solution = daedalus_internal(
+        length(r0_values), shared_data, param_sets, cb_set)
 
     # Format results: Vector of NamedTuples, one per r0
     results = []
@@ -125,7 +127,8 @@ function daedalus(country::Union{String, DataLoader.CountryData}, infections::Ve
             nothing
         end
 
-        push!(results, (sol = ensemble_solution[i], saves = saved_vals, npi = npi, r0 = r0_values[i]))
+        push!(results, (
+            sol = ensemble_solution[i], saves = saved_vals, npi = npi, r0 = r0_values[i]))
     end
 
     return results

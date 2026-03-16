@@ -255,7 +255,7 @@ end
 
         result = Daedalus.daedalus(
             "Australia",
-            2.5,
+            "sars-cov-1",
             time_end = 100.0,
             increment = 1.0,
             npi = npi,
@@ -272,7 +272,7 @@ end
 
         result = Daedalus.daedalus(
             "Australia",
-            1.8,
+            "sars-cov-1",
             time_end = 60.0,
             npi = npi,
             log_rt = false
@@ -286,7 +286,7 @@ end
 
         result = Daedalus.daedalus(
             "Australia",
-            2.0,
+            "sars-cov-1",
             time_end = 50.0,
             increment = 1.0,
             npi = npi
@@ -303,7 +303,7 @@ end
 
         result = Daedalus.daedalus(
             "Australia",
-            2.0,
+            "influenza 2009",
             time_end = 50.0,
             increment = 1.0,
             npi = npi
@@ -320,7 +320,7 @@ end
         npi_block = Daedalus.DaedalusStructs.TimedNpi(10.0, 30.0, 0.0)
         result_block = Daedalus.daedalus(
             "Australia",
-            3.0,
+            "influenza 2009",
             time_end = 50.0,
             npi = npi_block
         )
@@ -330,7 +330,7 @@ end
         npi_none = Daedalus.DaedalusStructs.TimedNpi(10.0, 30.0, 1.0)
         result_none = Daedalus.daedalus(
             "Australia",
-            3.0,
+            "influenza 2009",
             time_end = 50.0,
             npi = npi_none
         )
@@ -342,7 +342,7 @@ end
         npi_start = Daedalus.DaedalusStructs.TimedNpi(0.0, 20.0, 0.5)
         result_start = Daedalus.daedalus(
             "Australia",
-            2.0,
+            "influenza 2009",
             time_end = 40.0,
             npi = npi_start
         )
@@ -352,7 +352,7 @@ end
         npi_end = Daedalus.DaedalusStructs.TimedNpi(20.0, 50.0, 0.5)
         result_end = Daedalus.daedalus(
             "Australia",
-            2.0,
+            "influenza 2009",
             time_end = 50.0,
             npi = npi_end
         )
@@ -362,7 +362,7 @@ end
         npi_full = Daedalus.DaedalusStructs.TimedNpi(0.0, 50.0, 0.5)
         result_full = Daedalus.daedalus(
             "Australia",
-            2.0,
+            "influenza 2009",
             time_end = 50.0,
             npi = npi_full
         )
@@ -375,7 +375,7 @@ end
         # Run without intervention
         result_none = Daedalus.daedalus(
             "Australia",
-            2.5,
+            "influenza 2009",
             time_end = 100.0,
             increment = 1.0,
             log_rt = true
@@ -385,7 +385,7 @@ end
         npi = Daedalus.DaedalusStructs.TimedNpi(20.0, 60.0, 0.3)
         result_npi = Daedalus.daedalus(
             "Australia",
-            2.5,
+            "influenza 2009",
             time_end = 100.0,
             increment = 1.0,
             npi = npi,
@@ -416,7 +416,7 @@ end
 
         result = Daedalus.daedalus(
             "Australia",
-            2.5,
+            "influenza 2009",
             time_end = 100.0,
             npi = npi
         )
@@ -429,7 +429,7 @@ end
     @testset "Model accepts nothing (unchanged behavior)" begin
         result = Daedalus.daedalus(
             "Australia",
-            2.0,
+            "influenza 2009",
             time_end = 50.0,
             npi = nothing
         )
@@ -446,7 +446,7 @@ end
         npi = Daedalus.DaedalusStructs.TimedNpi(20.0, 20.1, 0.5)
         result = Daedalus.daedalus(
             "Australia",
-            2.0,
+            "influenza 2009",
             time_end = 40.0,
             increment = 0.1,
             npi = npi
@@ -459,7 +459,7 @@ end
         npi = Daedalus.DaedalusStructs.TimedNpi(10.0, 210.0, 0.3)
         result = Daedalus.daedalus(
             "Australia",
-            2.0,
+            "influenza 2009",
             time_end = 250.0,
             npi = npi
         )
@@ -477,7 +477,7 @@ end
         )
         result = Daedalus.daedalus(
             "Australia",
-            2.0,
+            "influenza 2009",
             time_end = 120.0,
             npi = npi
         )
@@ -495,7 +495,7 @@ end
         )
         result = Daedalus.daedalus(
             "Australia",
-            2.5,
+            "sars-cov-1",
             time_end = 100.0,
             npi = npi
         )
@@ -507,7 +507,7 @@ end
         npi = Daedalus.DaedalusStructs.TimedNpi(5.0, 50.0, 0.1)
         result = Daedalus.daedalus(
             "Australia",
-            5.0,
+            "sars-cov-1",
             time_end = 80.0,
             npi = npi
         )
@@ -519,7 +519,7 @@ end
         npi = Daedalus.DaedalusStructs.TimedNpi(150.0, 180.0, 0.3)
         result = Daedalus.daedalus(
             "Australia",
-            2.0,
+            "influenza 2009",
             time_end = 200.0,
             npi = npi
         )

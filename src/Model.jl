@@ -122,10 +122,13 @@ function extract_infection_params(infection::DataLoader.InfectionData)::NamedTup
     # All economic groups use working-age parameters
     i_WORKING_AGE = 3  # 20-64 age group (third group, 1-indexed)
 
-    eta_expanded = [infection.eta; repeat([infection.eta[i_WORKING_AGE]], Constants.N_ECON_GROUPS)]
-    omega_expanded = [fill(0.012, Constants.N_AGE_GROUPS); repeat([0.012], Constants.N_ECON_GROUPS)]
+    eta_expanded = [infection.eta;
+                    repeat([infection.eta[i_WORKING_AGE]], Constants.N_ECON_GROUPS)]
+    omega_expanded = [fill(0.012, Constants.N_AGE_GROUPS);
+                      repeat([0.012], Constants.N_ECON_GROUPS)]
     gamma_H_val = infection.gamma_H_recovery  # Scalar value
-    gamma_H_expanded = [fill(gamma_H_val, Constants.N_AGE_GROUPS); repeat([gamma_H_val], Constants.N_ECON_GROUPS)]
+    gamma_H_expanded = [fill(gamma_H_val, Constants.N_AGE_GROUPS);
+                        repeat([gamma_H_val], Constants.N_ECON_GROUPS)]
 
     nu = 0.0  # Not user-configurable
 
@@ -275,14 +278,14 @@ function daedalus(country::Union{String, DataLoader.CountryData}, infection::Str
         time_end::Float64 = 100.0,
         increment::Float64 = 1.0,
         n_threads::Int = 1)
-
     infection_data = DataLoader.get_pathogen(lowercase(infection))
     return daedalus(country, infection_data; npi = npi, log_rt = log_rt,
-                    time_end = time_end, increment = increment, n_threads = n_threads)
+        time_end = time_end, increment = increment, n_threads = n_threads)
 end
 
 # Method 2: Single InfectionData object
-function daedalus(country::Union{String, DataLoader.CountryData}, infection::DataLoader.InfectionData;
+function daedalus(
+        country::Union{String, DataLoader.CountryData}, infection::DataLoader.InfectionData;
         npi::Union{Npi, TimedNpi, Nothing} = nothing,
         log_rt::Bool = true,
         time_end::Float64 = 100.0,
@@ -297,6 +300,7 @@ function daedalus(country::Union{String, DataLoader.CountryData}, infection::Dat
 
     # Prepare shared data once
     shared_data = prepare_shared_data(cd, time_end, increment)
+    shared_data.init_state[end] = inf_params.r0 # add R0 manually
 
     # Get country data for beta calculation
     contacts_unscaled = total_contacts(prepare_contacts(cd; scaled = false))
