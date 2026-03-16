@@ -1,6 +1,8 @@
 @testset "DAEDALUS model" begin
     try
-        daedalus("Australia", 5.0, time_end = 100.0)
+        infection = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+        infection.r0 = 5.0
+        daedalus("Australia", infection, time_end = 100.0)
         @test true
     catch e
         @test false
@@ -9,12 +11,16 @@ end
 
 @testset "daedalus accepts CountryData struct" begin
     cd = Daedalus.DataLoader.get_country("Australia")
-    result = daedalus(cd, 3.0, time_end = 100.0, log_rt = false)
+    infection = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+    infection.r0 = 3.0
+    result = daedalus(cd, infection, time_end = 100.0, log_rt = false)
     @test length(result.sol.t) == 101
     @test all(isfinite, result.sol.u[end])
 
     # result must be identical to string-based call
-    result_str = daedalus("Australia", 3.0, time_end = 100.0, log_rt = false)
+    infection_str = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+    infection_str.r0 = 3.0
+    result_str = daedalus("Australia", infection_str, time_end = 100.0, log_rt = false)
     @test result.sol.u[end] ≈ result_str.sol.u[end]
 end
 

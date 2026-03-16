@@ -19,7 +19,9 @@
         @test all(isfinite, cm)
 
         # ODE must solve without NaN/Inf in the solution
-        result = daedalus(country, 3.0, time_end = 100.0, log_rt = false)
+        infection = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+        infection.r0 = 3.0
+        result = daedalus(country, infection, time_end = 100.0, log_rt = false)
         last_u = result.sol.u[end]
 
         @test length(result.sol.t) == 101 # hardcoded but oh well

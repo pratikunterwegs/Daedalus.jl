@@ -228,10 +228,12 @@ end
 @testset "TimedNpi integration with daedalus model" begin
     @testset "Model runs with single-phase TimedNpi" begin
         npi = Daedalus.DaedalusStructs.TimedNpi(15.0, 45.0, 0.5, "test_single")
+        infection_single = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+        infection_single.r0 = 2.0
 
         result = Daedalus.daedalus(
             "Australia",
-            2.0,
+            infection_single,
             time_end = 80.0,
             increment = 1.0,
             npi = npi,
