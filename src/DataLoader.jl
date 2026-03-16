@@ -193,7 +193,7 @@ function _load_pathogens()
         # hfr[age] = IFR[age] / IHR[age]  (clamp to avoid div-by-zero)
         hfr = ifr_4 ./ max.(ihr_4, 1e-12)
 
-        result[pname] = InfectionData(
+        result[lowercase(pname)] = InfectionData(
             r0, sigma, ps, epsilon,
             gamma_Is, gamma_Ia, gamma_H_rec, gamma_H_death, rho,
             eta, hfr, ifr_4
@@ -214,8 +214,9 @@ function get_pathogen(name::String)::InfectionData
         _pathogen_cache[] = _load_pathogens()
     end
     d = _pathogen_cache[]
-    haskey(d, name) || error("Pathogen not found: $name. Available: " * join(keys(d), ", "))
-    return d[name]
+    name_lower = lowercase(name)
+    haskey(d, name_lower) || error("Pathogen not found: $name. Available: " * join(keys(d), ", "))
+    return d[name_lower]
 end
 
 """
