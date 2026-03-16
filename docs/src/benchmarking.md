@@ -13,7 +13,9 @@ This section shows various benchmarks.
 using Daedalus
 using BenchmarkTools
 
-@benchmark daedalus("Australia", 2.5, time_end=600.0)
+infection_01 = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+infection_01.r0 = 2.5
+@benchmark daedalus("Australia", infection_01, time_end=600.0)
 ```
 
 ```@example benchmarking_02
@@ -21,7 +23,9 @@ using BenchmarkTools
 using Daedalus
 using BenchmarkTools
 
-@benchmark daedalus("Australia", 2.5, time_end=100.0)
+infection_02 = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+infection_02.r0 = 2.5
+@benchmark daedalus("Australia", infection_02, time_end=100.0)
 ```
 
 ## Effect of logging $R_t$
@@ -33,7 +37,9 @@ using Daedalus
 using BenchmarkTools
 
 # turn off Rt logging and compare with benchmark above
-@benchmark daedalus("Australia", 2.5, log_rt=false, time_end=600.0)
+infection_rt = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+infection_rt.r0 = 2.5
+@benchmark daedalus("Australia", infection_rt, log_rt=false, time_end=600.0)
 ```
 
 ## Reactive events
@@ -47,12 +53,16 @@ using BenchmarkTools
 
 npi = Daedalus.DaedalusStructs.Npi(20000.0, (coef=0.7,));
 
-@benchmark daedalus("Australia", 5.0, npi=npi, time_end=600.0)
+infection_re = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+infection_re.r0 = 5.0
+@benchmark daedalus("Australia", infection_re, npi=npi, time_end=600.0)
 ```
 
 ```@example benchmarking_reactive_event
 # shorter duration
-@benchmark daedalus("Australia", 5.0, npi=npi, time_end=100.0)
+infection_re2 = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+infection_re2.r0 = 5.0
+@benchmark daedalus("Australia", infection_re2, npi=npi, time_end=100.0)
 ```
 
 ## Timed events
@@ -69,11 +79,15 @@ timed_npi = Daedalus.DaedalusStructs.TimedNpi(
     "three_phase_lockdown"
 )
 
-@benchmark daedalus("Australia", 3.0, npi=timed_npi, time_end=600.0)
+infection_te = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+infection_te.r0 = 3.0
+@benchmark daedalus("Australia", infection_te, npi=timed_npi, time_end=600.0)
 ```
 
 Timed events do not need $R_t$ logging and can be benchmarked without it.
 
 ```@example benchmarking_timed_event
-@benchmark daedalus("Australia", 3.0, npi=timed_npi, time_end=600.0, log_rt=false)
+infection_te2 = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+infection_te2.r0 = 3.0
+@benchmark daedalus("Australia", infection_te2, npi=timed_npi, time_end=600.0, log_rt=false)
 ```

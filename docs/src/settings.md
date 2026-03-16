@@ -36,10 +36,12 @@ Daedalus.Data.get_settings(cd_multi) # vector of two → 2
 
 ## Running the model with multiple settings
 
-Pass the modified struct directly to [`daedalus`](@ref):
+Pass the modified struct directly to [`daedalus`](@ref) along with infection parameters:
 
 ```@example multi_settings
-result_multi = daedalus(cd_multi, 2.5, time_end = 300.0)
+infection = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+infection.r0 = 2.5
+result_multi = daedalus(cd_multi, infection, time_end = 300.0)
 
 times  = Daedalus.Outputs.get_times(result_multi)
 deaths = Daedalus.Outputs.get_values(result_multi, "D", 1)
@@ -65,8 +67,13 @@ Adding a second identical matrix doubles the total contacts, which halves `β`, 
 cd_double = deepcopy(cd)
 cd_double.contact_matrix = [cm, cm]  # two equal settings
 
-result_single = daedalus(cd, 2.5, time_end = 300.0, log_rt = false)
-result_double = daedalus(cd_double, 2.5, time_end = 300.0, log_rt = false)
+infection_single = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+infection_single.r0 = 2.5
+infection_double = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+infection_double.r0 = 2.5
+
+result_single = daedalus(cd, infection_single, time_end = 300.0, log_rt = false)
+result_double = daedalus(cd_double, infection_double, time_end = 300.0, log_rt = false)
 
 d_single = last(Daedalus.Outputs.get_values(result_single, "D", 1))
 d_double = last(Daedalus.Outputs.get_values(result_double, "D", 1))

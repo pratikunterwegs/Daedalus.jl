@@ -16,8 +16,14 @@ using Plots
 hosp_threshold=20000.0
 a = Daedalus.DaedalusStructs.Npi(hosp_threshold, (coef=0.7,));
 
-data = daedalus("Australia", 3.0, npi=a, time_end=600.0);
-data_default = daedalus("Australia", 3.0, time_end=600.0);
+# Create infection data for both runs
+infection = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+infection.r0 = 3.0
+infection_default = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+infection_default.r0 = 3.0
+
+data = daedalus("Australia", infection, npi=a, time_end=600.0);
+data_default = daedalus("Australia", infection_default, time_end=600.0);
 
 # plot new hosp over time
 iHosp = Daedalus.Constants.get_indices("H")
@@ -61,7 +67,11 @@ timed_npi = Daedalus.DaedalusStructs.TimedNpi(
     "three_phase_lockdown"
 )
 
-data = daedalus("Australia", 3.0, npi=timed_npi, time_end=600.0);
+# Create infection data
+infection_timed = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+infection_timed.r0 = 3.0
+
+data = daedalus("Australia", infection_timed, npi=timed_npi, time_end=600.0);
 
 # get exposed
 iExpo = Daedalus.Constants.get_indices("E")

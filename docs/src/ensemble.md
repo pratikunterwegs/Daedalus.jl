@@ -11,15 +11,22 @@ Better functionality for working with ensemble outputs, using the inbuilt DE.jl 
 
 ## Basic ensemble run
 
-Pass a `Vector{Float64}` as the `r0` argument instead of a scalar value:
+Pass a `Vector{InfectionData}` with different R0 values:
 
 ```@example ensemble_basic
 using Daedalus
 using Plots
 
 # Run model with three different R0 values
-r0_values = [1.5, 2.5, 3.5]
-results = daedalus("Australia", r0_values, time_end=600.0);
+infections = [
+    Daedalus.DataLoader.get_pathogen("sars-cov-2 delta"),
+    Daedalus.DataLoader.get_pathogen("sars-cov-2 delta"),
+    Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+]
+infections[1].r0 = 1.5
+infections[2].r0 = 2.5
+infections[3].r0 = 3.5
+results = daedalus("Australia", infections, time_end=600.0);
 
 # Each result contains: sol, saves, npi, r0
 println("Number of results: ", length(results))
@@ -97,7 +104,11 @@ npi = Daedalus.DaedalusStructs.Npi(10000.0, (coef=0.5,))
 
 # Run ensemble with same NPI applied to all R0 values
 r0_range = [1.5, 2.0, 2.5, 3.0, 3.5]
-results_with_npi = daedalus("Australia", r0_range, npi=npi, time_end=600.0)
+infections_npi = [Daedalus.DataLoader.get_pathogen("sars-cov-2 delta") for _ in r0_range]
+for (i, r0) in enumerate(r0_range)
+    infections_npi[i].r0 = r0
+end
+results_with_npi = daedalus("Australia", infections_npi, npi=npi, time_end=600.0)
 ```
 
 ## Large-scale parameter sweeps
@@ -107,7 +118,11 @@ For broader sensitivity analyses, you can define finer-grained R0 ranges:
 ```@example ensemble_basic
 # Fine-grained sweep from 1.0 to 5.0 in 0.5 increments
 r0_sweep = collect(1.0:0.5:5.0)
-results_sweep = daedalus("Australia", r0_sweep, time_end=300.0);
+infections_sweep = [Daedalus.DataLoader.get_pathogen("sars-cov-2 delta") for _ in r0_sweep]
+for (i, r0) in enumerate(r0_sweep)
+    infections_sweep[i].r0 = r0
+end
+results_sweep = daedalus("Australia", infections_sweep, time_end=300.0);
 
 # NOTE: add plot of infectious or exposed
 ```

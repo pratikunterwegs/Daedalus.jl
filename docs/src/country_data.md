@@ -59,28 +59,30 @@ uk.contact_matrix
 ```@example pathogen_struct
 using Daedalus
 
-delta = Daedalus.DataLoader.get_pathogen("SARS-CoV-2 delta")
+delta = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
 
 delta
 ```
 
 ## Preparing country inputs for the model
 
-Pass a country name string directly to [`daedalus`](@ref) to run the model with country-specific demography, contacts, and workforce data:
+Pass a country name string and a pathogen name to [`daedalus`](@ref) to run the model with country-specific demography, contacts, and workforce data:
 
 ```@example country_inputs
 using Daedalus
 
-result = daedalus("United Kingdom", 2.5, time_end=600.0)
+result = daedalus("United Kingdom", "sars-cov-2 delta", time_end=600.0)
 ```
 
-You can also pass a [`DataLoader.CountryData`](@ref) struct directly.
-This is useful when you want to pre-fetch or modify country data before running the model:
+You can also pass a [`DataLoader.CountryData`](@ref) struct directly and customize infection parameters.
+This is useful when you want to pre-fetch or modify country or infection data before running the model:
 
 ```@example country_inputs
 # Pre-fetch country data and pass the struct directly
 uk = Daedalus.DataLoader.get_country("United Kingdom")
-result2 = daedalus(uk, 2.5, time_end=600.0)
+infection = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+infection.r0 = 2.5
+result2 = daedalus(uk, infection, time_end=600.0)
 ```
 
 The `Data` sub-module also exposes lower-level functions for inspecting or manipulating the country arrays directly.
