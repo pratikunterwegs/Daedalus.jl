@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.0.6] - 2026-03-16
 
 ### Changed (Breaking)
 - **`daedalus()` function signature refactored**: second positional argument now takes infection parameters (`infection`) instead of scalar/vector `r0`. Users must pass parameters via `InfectionData` object rather than individual keyword arguments
