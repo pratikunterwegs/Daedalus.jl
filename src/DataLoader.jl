@@ -215,7 +215,8 @@ function get_pathogen(name::String)::InfectionData
     end
     d = _pathogen_cache[]
     name_lower = lowercase(name)
-    haskey(d, name_lower) || error("Pathogen not found: $name. Available: " * join(keys(d), ", "))
+    haskey(d, name_lower) ||
+        error("Pathogen not found: $name. Available: " * join(keys(d), ", "))
     return d[name_lower]
 end
 
