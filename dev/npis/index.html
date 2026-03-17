@@ -6,8 +6,14 @@ using Plots
 hosp_threshold=20000.0
 a = Daedalus.DaedalusStructs.Npi(hosp_threshold, (coef=0.7,));
 
-data = daedalus(&quot;Australia&quot;, 3.0, npi=a, time_end=600.0);
-data_default = daedalus(&quot;Australia&quot;, 3.0, time_end=600.0);
+# Create infection data for both runs
+infection = Daedalus.DataLoader.get_pathogen(&quot;sars-cov-2 delta&quot;)
+infection.r0 = 3.0
+infection_default = Daedalus.DataLoader.get_pathogen(&quot;sars-cov-2 delta&quot;)
+infection_default.r0 = 3.0
+
+data = daedalus(&quot;Australia&quot;, infection, npi=a, time_end=600.0);
+data_default = daedalus(&quot;Australia&quot;, infection_default, time_end=600.0);
 
 # plot new hosp over time
 iHosp = Daedalus.Constants.get_indices(&quot;H&quot;)
@@ -22,10 +28,10 @@ times = unique(data.sol.t)
 plot(times, hosp, label=&quot;Hosp w/ NPI&quot;)
 plot!(times, hosp_default, label=&quot;Hosp w/o NPI&quot;)
 xlabel!(&quot;Time (days)&quot;)
-ylabel!(&quot;Hosp occupancy&quot;)</code></pre><img src="5bc94594.svg" alt="Example block output"/><p>Plot <span>$R_t$</span> to see more differences.</p><pre><code class="language-julia hljs">plot(times, rt, label=&quot;Rt w/ NPI&quot;)
+ylabel!(&quot;Hosp occupancy&quot;)</code></pre><img src="6c6a6f87.svg" alt="Example block output"/><p>Plot <span>$R_t$</span> to see more differences.</p><pre><code class="language-julia hljs">plot(times, rt, label=&quot;Rt w/ NPI&quot;)
 plot!(times, rt_default, label=&quot;Rt w/o NPI&quot;)
 xlabel!(&quot;Time (days)&quot;)
-ylabel!(&quot;Rt&quot;)</code></pre><img src="4a91ef4e.svg" alt="Example block output"/><h2 id="Timed-NPIs"><a class="docs-heading-anchor" href="#Timed-NPIs">Timed NPIs</a><a id="Timed-NPIs-1"></a><a class="docs-heading-anchor-permalink" href="#Timed-NPIs" title="Permalink"></a></h2><p>Timed NPIs are responsive only to time and not state. These were translated from the implementation in the R package <em>daedalus</em> using Claude Sonnet 4.5 as a way of trying out Claude.</p><pre><code class="language-julia hljs">using Daedalus
+ylabel!(&quot;Rt&quot;)</code></pre><img src="3a61740f.svg" alt="Example block output"/><h2 id="Timed-NPIs"><a class="docs-heading-anchor" href="#Timed-NPIs">Timed NPIs</a><a id="Timed-NPIs-1"></a><a class="docs-heading-anchor-permalink" href="#Timed-NPIs" title="Permalink"></a></h2><p>Timed NPIs are responsive only to time and not state. These were translated from the implementation in the R package <em>daedalus</em> using Claude Sonnet 4.5 as a way of trying out Claude.</p><pre><code class="language-julia hljs">using Daedalus
 using Plots
 
 # define a timed npi giving the start times, end times, and beta scaling
@@ -36,7 +42,11 @@ timed_npi = Daedalus.DaedalusStructs.TimedNpi(
     &quot;three_phase_lockdown&quot;
 )
 
-data = daedalus(&quot;Australia&quot;, 3.0, npi=timed_npi, time_end=600.0);
+# Create infection data
+infection_timed = Daedalus.DataLoader.get_pathogen(&quot;sars-cov-2 delta&quot;)
+infection_timed.r0 = 3.0
+
+data = daedalus(&quot;Australia&quot;, infection_timed, npi=timed_npi, time_end=600.0);
 
 # get exposed
 iExpo = Daedalus.Constants.get_indices(&quot;E&quot;)
@@ -45,4 +55,4 @@ times = unique(data.sol.t)
 
 plot(times, exposed, label=&quot;Incidence w/ NPI&quot;)
 xlabel!(&quot;Time (days)&quot;)
-ylabel!(&quot;Incidence&quot;)</code></pre><img src="75b92db6.svg" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../ensemble/">« Modelling parameter uncertainty</a><a class="docs-footer-nextpage" href="../settings/">Multiple contact settings »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Monday 9 March 2026 15:16">Monday 9 March 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ylabel!(&quot;Incidence&quot;)</code></pre><img src="7875c72d.svg" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../ensemble/">« Modelling parameter uncertainty</a><a class="docs-footer-nextpage" href="../settings/">Multiple contact settings »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Tuesday 17 March 2026 10:20">Tuesday 17 March 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
