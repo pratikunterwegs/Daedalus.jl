@@ -20,8 +20,6 @@ stripping out Documenter.jl-specific syntax. Inserts package version badge.
 """
 function sync_readme()
     src_file = joinpath(@__DIR__, "src", "index.md")
-    tmp_file = joinpath(@__DIR__, ".readme_tmp.md")
-    tmp_index = joinpath(@__DIR__, "src", ".index_tmp.md")
     dest_file = joinpath(dirname(@__DIR__), "README.md")
 
     # Get version and generate badge
