@@ -33,11 +33,11 @@ function sync_readme()
 
     # Insert version badge after the first badge line
     content = replace(content,
-        r"(\n\[!\[Version:.*?\]\(.*?\)\]\(.*?\)\n)"s =>
+        r"(\n\[!\[Version\]\(.*?\)\]\(.*?\)\n)"s =>
         "\n$badge\n")
 
     # Update docs/src/index with correct version
-    write(tmp_index, content)
+    write(src_file, content)
 
     # Remove @meta blocks
     content = replace(content, r"```@meta\n.*?\n```\n*"s => "")
@@ -51,16 +51,9 @@ function sync_readme()
         "\n$badge\n")
 
     # Write to temporary file
-    write(tmp_file, content)
+    write(dest_file, content)
 
-    # Copy to index and README.md
-    run(`cp $tmp_index $src_file`)
-    run(`rm $tmp_index`)
-
-    run(`cp $tmp_file $dest_file`)
-    run(`rm $tmp_file`)
-
-    println("✓ README.md updated from docs/src/index.md with version badge")
+    println("✓ Readme and index updated with version $version")
 end
 
 sync_readme()
