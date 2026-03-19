@@ -9,7 +9,7 @@ makedocs(;
     sitename = "Daedalus.jl",
     format = Documenter.HTML(;
         prettyurls = get(ENV, "CI", "false") == "true",
-        canonical = "https://pratikunterwegs.github.io/Daedalus.jl",
+        canonical = "https://jameel-institute.github.io/Daedalus.jl",
         edit_link = "main",
         assets = String[],
         size_threshold_ignore = [
@@ -33,6 +33,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo = "github.com/pratikunterwegs/Daedalus.jl",
+    repo = "github.com/jameel-institute/Daedalus.jl",
     devbranch = "main"
 )
