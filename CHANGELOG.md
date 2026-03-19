@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.0.7] - 2026-03-19
 
-Transfer repository to Jameel Institute @jameel-institute oragnisation.
+- Transfer repository to Jameel Institute @jameel-institute oragnisation
+- Added small script `docs/sync_readme.jl` to update package version in website index and Readme.md
 
 ## [0.0.6] - 2026-03-16
 
