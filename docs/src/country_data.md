@@ -94,3 +94,40 @@ Each function accepts either a country name `String` or a `CountryData` struct:
 | `prepare_contacts(country)` | Scaled 49×49 contact matrix |
 | `worker_contacts(country)` | Per-capita within-sector contact rates (length-45 vector) |
 | `prepare_demog(country)` | 49-element population vector |
+
+## Running Daedalus with country and infection structs
+
+Pass a country name string directly to `daedalus` to use country-specific demography, contact patterns, and workforce data.
+
+```@example uk_daedalus
+using Daedalus
+using Plots
+
+# Run the model using UK demography and contact patterns
+infection_uk = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+infection_uk.r0 = 2.5
+data_uk = daedalus("United Kingdom", infection_uk, time_end=600.0)
+
+times_uk = Daedalus.Outputs.get_times(data_uk)
+exposed_uk = Daedalus.Outputs.get_values(data_uk, "E", 1)
+hosp_uk = Daedalus.Outputs.get_values(data_uk, "H", 1)
+
+plot(times_uk, exposed_uk, label = "exposed")
+plot!(times_uk, hosp_uk, label = "hospitalised")
+xlabel!("Time (days)")
+ylabel!("# individuals")
+title!("United Kingdom — SEIR dynamics")
+```
+
+```@example uk_daedalus
+# Effective reproduction number over time
+rt_uk = Daedalus.Outputs.get_values(data_uk, "Rt", 1)
+plot(times_uk, rt_uk, label = "Rt", color = :red)
+hline!([1.0], linestyle = :dash, color = :black, label = "Rt = 1")
+xlabel!("Time (days)")
+ylabel!("Rt")
+title!("United Kingdom — effective reproduction number")
+```
+
+See [Country and pathogen data](@ref) for a full overview of the bundled
+data and how to use pathogen-specific parameters.
