@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **`ParamEffect` struct**: New struct in `DaedalusStructs` to specify ODE parameter modifications. Pairs a parameter name (`:beta`, `:omega`, etc.) with a transform function.
+- **Flexible `Npi` parameter specifications**: `Npi` now accepts flexible parameter names and transform functions via new constructors:
+  - Primary: `Npi(threshold::Float64, param_names::Vector{Symbol}, func::Function)` — specify multiple parameters with a single transform function
+  - Convenience: `Npi(threshold::Float64, param_name::Symbol, func::Function)` — single parameter variant
+  - Backward-compatible: `Npi(threshold::Float64, coefs::NamedTuple)` — old `(coef=...)` style still works for existing code
+- **New `make_param_changer(npi::Npi)` dispatch**: Replaces hardcoded parameter modification logic. Reads parameter specifications from the `Npi` struct and applies all effects in a single callback.
+- **New `make_param_reset(npi::Npi)` dispatch**: Companion to `make_param_changer` that resets all modified parameters to their original values.
+
+### Changed
+- **`Npi` struct internals**: Replaced `coefs::NamedTuple` field with `effects::Vector{ParamEffect}` to support flexible parameter specifications.
+- **Removed `get_coef` from public API**: No longer exported; `make_param_changer(npi::Npi)` and `make_param_reset(npi::Npi)` handle coefficient extraction internally.
+
+### Migration Guide (for new code using NPIs)
+
+**Old style (still works via backward-compat constructor):**
+```julia
+npi = Npi(5000.0, (coef = 0.4,))  # hardcoded beta modification
+```
+
+**New flexible style:**
+```julia
+# Single parameter
+npi = Npi(5000.0, :beta, x -> x .* 0.4)
+
+# Multiple parameters
+npi = Npi(5000.0, [:beta, :omega], x -> x .* 0.4)
+
+# Custom transform functions
+npi = Npi(5000.0, :beta, x -> 0.6 .* x)  # Same as above
+
+# Different transformations per param (use separate Npis or custom closures)
+```
+
 ## [0.0.7] - 2026-03-19
 
 - Transfer repository to Jameel Institute @jameel-institute oragnisation

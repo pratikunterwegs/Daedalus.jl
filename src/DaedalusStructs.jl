@@ -5,7 +5,7 @@ using ..Constants
 
 using DiffEqCallbacks
 
-export Params, NpiData, Npi, TimedNpi, StateData, CtStateData, DsStateData,
+export Params, NpiData, Npi, TimedNpi, ParamEffect, StateData, CtStateData, DsStateData,
        get_indices, get_comp_threshold, n_phases, total_duration
 
 """
@@ -40,6 +40,31 @@ mutable struct Params
 end
 
 abstract type Event end
+
+"""
+    ParamEffect
+
+A struct specifying how an NPI modifies a single ODE parameter.
+
+# Fields
+- `name::Symbol`: The name of the parameter to modify (e.g., `:beta`, `:omega`)
+- `func::Function`: A function mapping the original parameter value to the modified value.
+  The function should have signature `(value::Union{Float64, Vector}) -> modified_value`.
+  Coefficients should be captured in the function closure.
+
+# Example
+```julia
+# Reduce beta by 40%
+ParamEffect(:beta, x -> x .* 0.6)
+
+# Apply different reduction to a vector parameter
+ParamEffect(:omega, x -> x .* 0.8)
+```
+"""
+struct ParamEffect
+    name::Symbol
+    func::Function
+end
 
 abstract type StateData end
 
@@ -101,20 +126,68 @@ end
 """
     Npi
 
-A struct to specify an NPI. The idea here is for the NPI to be reactive to
-    compartmental values which are logged at discrete time points.
-    The struct is mutable so that `saved_values` can be updated.
+A struct to specify a reactive (state-dependent) NPI. The NPI activates and deactivates
+based on epidemiological compartment values logged at discrete time points.
+
+The struct carries a list of parameter modifications (effects) that describe which ODE
+parameters are affected and how they are modified when the NPI is active.
+
+# Fields
+- `params::NpiData`: Trigger conditions (compartment thresholds for on/off)
+- `effects::Vector{ParamEffect}`: Parameter modifications to apply when NPI is active
+- `saved_values::SavedValues`: Historical state values for tracking triggers
+- `ison::Bool`: Current status flag (true if intervention is active)
+
+# Constructors
+
+## Flexible constructor (primary usage)
+```julia
+Npi(threshold::Float64, param_names::Vector{Symbol}, func::Function)
+```
+- `threshold`: Hospitalization threshold to trigger NPI
+- `param_names`: List of parameter names to modify (e.g., `[:beta]` or `[:beta, :omega]`)
+- `func`: A function mapping original value to modified value
+
+Example: `Npi(5000.0, [:beta], x -> x .* 0.6)`
+
+## Convenience constructor (single parameter)
+```julia
+Npi(threshold::Float64, param_name::Symbol, func::Function)
+```
+
+Example: `Npi(5000.0, :beta, x -> x .* 0.6)`
+
+## Backward-compatible constructor
+```julia
+Npi(value_on::Float64, coefs::NamedTuple)
+```
+
+Example: `Npi(5000.0, (coef = 0.4,))`
+Maps to: `Npi(5000.0, :beta, x -> x .* 0.4)`
 """
 mutable struct Npi <: Event
     params::NpiData
-    coefs::NamedTuple
+    effects::Vector{ParamEffect}
     saved_values::SavedValues
     ison::Bool
 
-    function Npi(value_on::Float64, coefs::NamedTuple)
+    # Primary flexible constructor
+    function Npi(value_on::Float64, param_names::Vector{Symbol}, func::Function)
         params = NpiData(value_on)
-        sv = SavedValues(Float64, Tuple{Bool, Float64, Float64}) # time and two data
-        return new(params, coefs, sv, false)
+        effects = [ParamEffect(name, func) for name in param_names]
+        sv = SavedValues(Float64, Tuple{Bool, Float64, Float64})
+        return new(params, effects, sv, false)
+    end
+
+    # Convenience constructor for single parameter
+    function Npi(value_on::Float64, param_name::Symbol, func::Function)
+        Npi(value_on, [param_name], func)
+    end
+
+    # Backward-compatible constructor for NamedTuple style
+    function Npi(value_on::Float64, coefs::NamedTuple)
+        coef = coefs.coef
+        Npi(value_on, [:beta], original -> original .* coef)
     end
 end
 

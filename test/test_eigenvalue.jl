@@ -202,7 +202,7 @@ end
 
     @testset "Rt with NPI intervention" begin
         # Create a simple NPI for testing
-        npi = Daedalus.DaedalusStructs.Npi(20000.0, (coef = 0.7,))
+        npi = Daedalus.DaedalusStructs.Npi(20000.0, :beta, original -> original .* 0.7)
 
         infection = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
         infection.r0 = 3.0

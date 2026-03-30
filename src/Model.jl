@@ -353,9 +353,8 @@ function daedalus(
             cb_set = timed_callbacks
         end
     elseif isa(npi, Npi)
-        coef = get_coef(npi)
-        fn_effect_on = make_param_changer("beta", .*, coef)
-        fn_effect_off = make_param_reset("beta")
+        fn_effect_on = make_param_changer(npi)
+        fn_effect_off = make_param_reset(npi)
         save_events = make_save_events(npi, savepoints)
         events = make_events(npi, fn_effect_on, fn_effect_off, savepoints)
         if log_rt

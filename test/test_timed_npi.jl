@@ -412,7 +412,7 @@ end
 
 @testset "TimedNpi vs reactive Npi coexistence" begin
     @testset "Model accepts reactive Npi (unchanged behavior)" begin
-        npi = Daedalus.DaedalusStructs.Npi(5000.0, (coef = 0.4,))
+        npi = Daedalus.DaedalusStructs.Npi(5000.0, :beta, original -> original .* 0.4)
 
         result = Daedalus.daedalus(
             "Australia",
@@ -517,6 +517,56 @@ end
     @testset "Late-starting intervention" begin
         # Intervention starts after epidemic peak likely passed
         npi = Daedalus.DaedalusStructs.TimedNpi(150.0, 180.0, 0.3)
+        result = Daedalus.daedalus(
+            "Australia",
+            "influenza 2009",
+            time_end = 200.0,
+            npi = npi
+        )
+        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
+    end
+end
+
+@testset "Npi with flexible parameter effects" begin
+    @testset "Single parameter (backward compatible)" begin
+        npi = Daedalus.DaedalusStructs.Npi(5000.0, :beta, x -> x .* 0.5)
+        @test length(npi.effects) == 1
+        @test npi.effects[1].name == :beta
+
+        result = Daedalus.daedalus(
+            "Australia",
+            "influenza 2009",
+            time_end = 200.0,
+            npi = npi
+        )
+        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
+    end
+
+    @testset "Multiple parameters" begin
+        npi = Daedalus.DaedalusStructs.Npi(
+            5000.0,
+            [:beta, :omega],
+            x -> x .* 0.6
+        )
+        @test length(npi.effects) == 2
+        @test npi.effects[1].name == :beta
+        @test npi.effects[2].name == :omega
+
+        result = Daedalus.daedalus(
+            "Australia",
+            "influenza 2009",
+            time_end = 200.0,
+            npi = npi
+        )
+        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
+    end
+
+    @testset "Backward-compatible NamedTuple constructor" begin
+        # Old style should still work via backward-compat constructor
+        npi = Daedalus.DaedalusStructs.Npi(5000.0, (coef = 0.4,))
+        @test length(npi.effects) == 1
+        @test npi.effects[1].name == :beta
+
         result = Daedalus.daedalus(
             "Australia",
             "influenza 2009",

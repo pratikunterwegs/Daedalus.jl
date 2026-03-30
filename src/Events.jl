@@ -11,7 +11,7 @@ using OrdinaryDiffEq
 
 export make_state_condition,
        make_events, make_param_changer, make_param_reset,
-       get_coef, make_save_events, make_rt_logger, make_timed_npi_callbacks
+       make_save_events, make_rt_logger, make_timed_npi_callbacks
 
 """
     make_state_condition(threshold, idx, comparison)::Function
@@ -66,6 +66,32 @@ function make_param_changer(param_name, func, coef)::Function
 end
 
 """
+    make_param_changer(npi::Npi)::Function
+
+Create a callback function that modifies all parameters specified in an Npi.
+
+Reads the parameter effects from `npi.effects` and generates a single function that
+applies all modifications at once.
+
+# Arguments
+- `npi::Npi`: An Npi struct containing a list of ParamEffect specifications
+
+# Returns
+A `Function` that takes an `integrator` and modifies all affected parameters in-place
+"""
+function make_param_changer(npi::Npi)::Function
+    function effect!(integrator)
+        for eff in npi.effects
+            original = getproperty(integrator.p, eff.name)
+            new_val = eff.func(original)
+            param_now = Symbol(String(eff.name) * "_now")
+            setproperty!(integrator.p, param_now, new_val)
+        end
+    end
+    return effect!
+end
+
+"""
     make_param_reset(param_name)::Function
 
 Create a callback function that resets a parameter to its original value.
@@ -81,6 +107,31 @@ function make_param_reset(param_name)::Function
         original_value = getproperty(integrator.p, Symbol(param_name))
         setproperty!(integrator.p, Symbol(param_name * "_now"), original_value)
     end
+end
+
+"""
+    make_param_reset(npi::Npi)::Function
+
+Create a callback function that resets all parameters specified in an Npi.
+
+Reads the parameter names from `npi.effects` and generates a single function that
+resets all of them to their original values.
+
+# Arguments
+- `npi::Npi`: An Npi struct containing a list of ParamEffect specifications
+
+# Returns
+A `Function` that takes an `integrator` and resets all affected parameters in-place
+"""
+function make_param_reset(npi::Npi)::Function
+    function effect!(integrator)
+        for eff in npi.effects
+            original = getproperty(integrator.p, eff.name)
+            param_now = Symbol(String(eff.name) * "_now")
+            setproperty!(integrator.p, param_now, original)
+        end
+    end
+    return effect!
 end
 
 """
