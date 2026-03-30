@@ -575,4 +575,60 @@ end
         )
         @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
     end
+
+    @testset "Per-parameter functions — Vector of Pairs" begin
+        # Different functions for different parameters
+        npi = Daedalus.DaedalusStructs.Npi(
+            5000.0,
+            [
+                :beta => x -> x .* 0.4,
+                :omega => x -> x .* 0.7
+            ]
+        )
+        @test length(npi.effects) == 2
+        @test npi.effects[1].name == :beta
+        @test npi.effects[2].name == :omega
+        # Verify the functions are different
+        test_val = 2.0
+        @test npi.effects[1].func(test_val) ≈ 0.8  # 2.0 * 0.4
+        @test npi.effects[2].func(test_val) ≈ 1.4  # 2.0 * 0.7
+
+        result = Daedalus.daedalus(
+            "Australia",
+            "influenza 2009",
+            time_end = 200.0,
+            npi = npi
+        )
+        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
+    end
+
+    @testset "Per-parameter functions — Dict" begin
+        # Dict-based variant
+        npi = Daedalus.DaedalusStructs.Npi(
+            5000.0,
+            Dict(
+                :beta => x -> x .* 0.5,
+                :omega => x -> x .* 0.9
+            )
+        )
+        @test length(npi.effects) == 2
+        # Dict iteration order is unspecified, but we should have both params
+        param_names = Set(eff.name for eff in npi.effects)
+        @test param_names == Set([:beta, :omega])
+
+        # Verify the functions produce correct values
+        beta_eff = [eff for eff in npi.effects if eff.name == :beta][1]
+        omega_eff = [eff for eff in npi.effects if eff.name == :omega][1]
+        test_val = 10.0
+        @test beta_eff.func(test_val) ≈ 5.0   # 10.0 * 0.5
+        @test omega_eff.func(test_val) ≈ 9.0  # 10.0 * 0.9
+
+        result = Daedalus.daedalus(
+            "Australia",
+            "influenza 2009",
+            time_end = 200.0,
+            npi = npi
+        )
+        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
+    end
 end

@@ -164,6 +164,34 @@ Npi(value_on::Float64, coefs::NamedTuple)
 
 Example: `Npi(5000.0, (coef = 0.4,))`
 Maps to: `Npi(5000.0, :beta, x -> x .* 0.4)`
+
+## Per-parameter function constructor — Vector of Pairs
+```julia
+Npi(threshold::Float64, param_effects::Vector{Pair{Symbol, Function}})
+```
+Allows different transformation functions for each parameter.
+
+Example:
+```julia
+Npi(5000.0, [
+    :beta    => x -> x .* 0.4,     # 60% reduction
+    :gamma_Ia => x -> x .* 0.8,    # 20% reduction
+])
+```
+
+## Per-parameter function constructor — Dict
+```julia
+Npi(threshold::Float64, param_effects::Dict{Symbol, Function})
+```
+Dict-based variant of the per-parameter function constructor.
+
+Example:
+```julia
+Npi(5000.0, Dict(
+    :beta    => x -> x .* 0.4,
+    :gamma_Ia => x -> x .* 0.8,
+))
+```
 """
 mutable struct Npi <: Event
     params::NpiData
@@ -171,24 +199,72 @@ mutable struct Npi <: Event
     saved_values::SavedValues
     ison::Bool
 
-    # Primary flexible constructor
-    function Npi(value_on::Float64, param_names::Vector{Symbol}, func::Function)
+    # Canonical inner constructor (takes pre-built effects)
+    function Npi(value_on::Float64, effects::Vector{ParamEffect})
         params = NpiData(value_on)
-        effects = [ParamEffect(name, func) for name in param_names]
         sv = SavedValues(Float64, Tuple{Bool, Float64, Float64})
         return new(params, effects, sv, false)
     end
 
+    # Flexible constructor (multiple params, single function)
+    function Npi(value_on::Float64, param_names::Vector{Symbol}, func::Function)
+        Npi(value_on, [ParamEffect(name, func) for name in param_names])
+    end
+
     # Convenience constructor for single parameter
     function Npi(value_on::Float64, param_name::Symbol, func::Function)
-        Npi(value_on, [param_name], func)
+        Npi(value_on, [ParamEffect(param_name, func)])
     end
 
     # Backward-compatible constructor for NamedTuple style
     function Npi(value_on::Float64, coefs::NamedTuple)
         coef = coefs.coef
-        Npi(value_on, [:beta], original -> original .* coef)
+        Npi(value_on, [ParamEffect(:beta, original -> original .* coef)])
     end
+end
+
+# External constructors for per-parameter functions
+
+"""
+    Npi(threshold::Float64, param_effects::Vector{Pair{Symbol, Function}})
+
+Create an Npi with different transformation functions for each parameter.
+
+# Arguments
+- `threshold::Float64`: Hospitalization threshold to trigger NPI
+- `param_effects::Vector{Pair{Symbol, Function}}`: Vector of parameter-to-function pairs
+
+# Example
+```julia
+Npi(5000.0, [
+    :beta     => x -> x .* 0.4,
+    :gamma_Ia => x -> x .* 0.8,
+])
+```
+"""
+function Npi(value_on::Float64, param_effects::Vector{<:Pair{Symbol, <:Function}})
+    Npi(value_on, [ParamEffect(p.first, p.second) for p in param_effects])
+end
+
+"""
+    Npi(threshold::Float64, param_effects::Dict{Symbol, Function})
+
+Create an Npi with different transformation functions for each parameter (Dict variant).
+
+# Arguments
+- `threshold::Float64`: Hospitalization threshold to trigger NPI
+- `param_effects::Dict{Symbol, Function}`: Dict mapping parameter names to transformation functions
+
+# Example
+```julia
+Npi(5000.0, Dict(
+    :beta     => x -> x .* 0.4,
+    :gamma_Ia => x -> x .* 0.8,
+))
+```
+"""
+function Npi(value_on::Float64, param_effects::Dict{Symbol, <:Function})
+    Npi(value_on, [ParamEffect(name, func) for (name, func) in param_effects])
 end
 
 """
