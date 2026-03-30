@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Primary: `Npi(threshold::Float64, param_names::Vector{Symbol}, func::Function)` — specify multiple parameters with a single transform function
   - Convenience: `Npi(threshold::Float64, param_name::Symbol, func::Function)` — single parameter variant
   - Backward-compatible: `Npi(threshold::Float64, coefs::NamedTuple)` — old `(coef=...)` style still works for existing code
+  - **Per-parameter functions (Vector of Pairs)**: `Npi(threshold::Float64, [:param1 => func1, :param2 => func2])` — different transformation function for each parameter
+  - **Per-parameter functions (Dict)**: `Npi(threshold::Float64, Dict(:param1 => func1, :param2 => func2))` — Dict-based variant of per-parameter functions
 - **New `make_param_changer(npi::Npi)` dispatch**: Replaces hardcoded parameter modification logic. Reads parameter specifications from the `Npi` struct and applies all effects in a single callback.
 - **New `make_param_reset(npi::Npi)` dispatch**: Companion to `make_param_changer` that resets all modified parameters to their original values.
 
@@ -32,13 +34,23 @@ npi = Npi(5000.0, (coef = 0.4,))  # hardcoded beta modification
 # Single parameter
 npi = Npi(5000.0, :beta, x -> x .* 0.4)
 
-# Multiple parameters
+# Multiple parameters, same function
 npi = Npi(5000.0, [:beta, :omega], x -> x .* 0.4)
 
 # Custom transform functions
 npi = Npi(5000.0, :beta, x -> 0.6 .* x)  # Same as above
 
-# Different transformations per param (use separate Npis or custom closures)
+# Different transformations per parameter — Vector of Pairs
+npi = Npi(5000.0, [
+    :beta => x -> x .* 0.4,      # 60% reduction
+    :gamma_Ia => x -> x .* 0.8   # 20% reduction
+])
+
+# Different transformations per parameter — Dict
+npi = Npi(5000.0, Dict(
+    :beta => x -> x .* 0.4,
+    :gamma_Ia => x -> x .* 0.8
+))
 ```
 
 ## [0.0.7] - 2026-03-19
