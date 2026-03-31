@@ -5,7 +5,7 @@ using ..Constants
 
 using DiffEqCallbacks
 
-export Params, NpiData, Npi, TimedNpi, ParamEffect, StateData, CtStateData, DsStateData,
+export Params, Npi, TimedNpi, ParamEffect, StateData, CtStateData, DsStateData,
        get_indices, get_comp_threshold, n_phases, total_duration
 
 """
@@ -41,31 +41,6 @@ end
 
 abstract type Event end
 
-"""
-    ParamEffect
-
-A struct specifying how an NPI modifies a single ODE parameter.
-
-# Fields
-- `name::Symbol`: The name of the parameter to modify (e.g., `:beta`, `:omega`)
-- `func::Function`: A function mapping the original parameter value to the modified value.
-  The function should have signature `(value::Union{Float64, Vector}) -> modified_value`.
-  Coefficients should be captured in the function closure.
-
-# Example
-```julia
-# Reduce beta by 40%
-ParamEffect(:beta, x -> x .* 0.6)
-
-# Apply different reduction to a vector parameter
-ParamEffect(:omega, x -> x .* 0.8)
-```
-"""
-struct ParamEffect
-    name::Symbol
-    func::Function
-end
-
 abstract type StateData end
 
 struct CtStateData <: StateData
@@ -86,6 +61,64 @@ struct DsStateData <: StateData
     function DsStateData(name, value)
         return new(name, value, "discrete")
     end
+end
+
+"""
+    ParamEffect
+
+A mutable struct specifying how an NPI modifies a single ODE parameter, including
+independent trigger conditions for activation and deactivation.
+
+# Fields
+- `name::Symbol`: The parameter to modify (e.g., `:beta`, `:omega`)
+- `func::Function`: A function mapping the original parameter value to the modified value
+- `comp_on::StateData`: Trigger condition to activate this effect
+- `comp_off::StateData`: Trigger condition to deactivate this effect
+- `saved_values::SavedValues`: Historical state values for tracking this effect's triggers
+- `ison::Bool`: Current activation status for this effect
+
+# Constructors
+
+## Full constructor (with StateData objects)
+```julia
+ParamEffect(name::Symbol, func::Function, comp_on::StateData, comp_off::StateData)
+```
+
+## Keyword convenience constructor
+```julia
+ParamEffect(name::Symbol, func::Function; on::Tuple{String, Float64}, off::Tuple{String, Float64})
+```
+
+Example:
+```julia
+# Reduce beta by 60% when H > 5000, restore when Rt < 1.0
+ParamEffect(:beta, x -> x .* 0.4; on=("H", 5000.0), off=("Rt", 1.0))
+
+# Reduce gamma_Ia by 20% when D > 100, restore when I < 8000
+ParamEffect(:gamma_Ia, x -> x .* 0.8; on=("D", 100.0), off=("I", 8000.0))
+```
+"""
+mutable struct ParamEffect
+    name::Symbol
+    func::Function
+    comp_on::StateData
+    comp_off::StateData
+    saved_values::SavedValues
+    ison::Bool
+
+    # Full constructor with StateData objects
+    function ParamEffect(name::Symbol, func::Function,
+            comp_on::StateData, comp_off::StateData)
+        sv = SavedValues(Float64, Tuple{Float64, Float64})
+        return new(name, func, comp_on, comp_off, sv, false)
+    end
+end
+
+# Keyword convenience constructor for ParamEffect
+function ParamEffect(name::Symbol, func::Function;
+        on::Tuple{String, Float64},
+        off::Tuple{String, Float64} = ("Rt", 1.0))
+    ParamEffect(name, func, CtStateData(on...), DsStateData(off...))
 end
 
 """
@@ -126,112 +159,64 @@ end
 """
     Npi
 
-A struct to specify a reactive (state-dependent) NPI. The NPI activates and deactivates
-based on epidemiological compartment values logged at discrete time points.
-
-The struct carries a list of parameter modifications (effects) that describe which ODE
-parameters are affected and how they are modified when the NPI is active.
+A mutable struct to specify a reactive (state-dependent) NPI. It is a container of
+`ParamEffect`s, each with independent trigger conditions for activation and deactivation.
 
 # Fields
-- `params::NpiData`: Trigger conditions (compartment thresholds for on/off)
-- `effects::Vector{ParamEffect}`: Parameter modifications to apply when NPI is active
-- `saved_values::SavedValues`: Historical state values for tracking triggers
-- `ison::Bool`: Current status flag (true if intervention is active)
+- `effects::Vector{ParamEffect}`: Parameter modifications to apply, each with its own trigger
 
 # Constructors
 
-## Flexible constructor (primary usage)
+## Direct container constructor
 ```julia
-Npi(threshold::Float64, param_names::Vector{Symbol}, func::Function)
-```
-- `threshold`: Hospitalization threshold to trigger NPI
-- `param_names`: List of parameter names to modify (e.g., `[:beta]` or `[:beta, :omega]`)
-- `func`: A function mapping original value to modified value
-
-Example: `Npi(5000.0, [:beta], x -> x .* 0.6)`
-
-## Convenience constructor (single parameter)
-```julia
-Npi(threshold::Float64, param_name::Symbol, func::Function)
+Npi(effects::Vector{ParamEffect})
 ```
 
-Example: `Npi(5000.0, :beta, x -> x .* 0.6)`
+# Examples
 
-## Backward-compatible constructor
 ```julia
-Npi(value_on::Float64, coefs::NamedTuple)
-```
-
-Example: `Npi(5000.0, (coef = 0.4,))`
-Maps to: `Npi(5000.0, :beta, x -> x .* 0.4)`
-
-## Per-parameter function constructor — Vector of Pairs
-```julia
-Npi(threshold::Float64, param_effects::Vector{Pair{Symbol, Function}})
-```
-Allows different transformation functions for each parameter.
-
-Example:
-```julia
-Npi(5000.0, [
-    :beta    => x -> x .* 0.4,     # 60% reduction
-    :gamma_Ia => x -> x .* 0.8,    # 20% reduction
+npi = Npi([
+    ParamEffect(:beta,     x -> x .* 0.4; on=("H", 5000.0), off=("Rt", 1.0)),
+    ParamEffect(:gamma_Ia, x -> x .* 0.8; on=("D",  100.0), off=("Rt", 1.0)),
+    ParamEffect(:gamma_Is, x -> x .* 0.8; on=("I", 8000.0), off=("H", 3000.0)),
 ])
-```
-
-## Per-parameter function constructor — Dict
-```julia
-Npi(threshold::Float64, param_effects::Dict{Symbol, Function})
-```
-Dict-based variant of the per-parameter function constructor.
-
-Example:
-```julia
-Npi(5000.0, Dict(
-    :beta    => x -> x .* 0.4,
-    :gamma_Ia => x -> x .* 0.8,
-))
 ```
 """
 mutable struct Npi <: Event
-    params::NpiData
     effects::Vector{ParamEffect}
-    saved_values::SavedValues
-    ison::Bool
 
-    # Canonical inner constructor (takes pre-built effects)
-    function Npi(value_on::Float64, effects::Vector{ParamEffect})
-        params = NpiData(value_on)
-        sv = SavedValues(Float64, Tuple{Bool, Float64, Float64})
-        return new(params, effects, sv, false)
-    end
-
-    # Flexible constructor (multiple params, single function)
-    function Npi(value_on::Float64, param_names::Vector{Symbol}, func::Function)
-        Npi(value_on, [ParamEffect(name, func) for name in param_names])
-    end
-
-    # Convenience constructor for single parameter
-    function Npi(value_on::Float64, param_name::Symbol, func::Function)
-        Npi(value_on, [ParamEffect(param_name, func)])
-    end
-
-    # Backward-compatible constructor for NamedTuple style
-    function Npi(value_on::Float64, coefs::NamedTuple)
-        coef = coefs.coef
-        Npi(value_on, [ParamEffect(:beta, original -> original .* coef)])
+    # Direct constructor (vector of ParamEffect)
+    function Npi(effects::Vector{ParamEffect})
+        return new(effects)
     end
 end
 
-# External constructors for per-parameter functions
+# Backward-compatible constructors (effects share H/Rt triggers)
+
+function Npi(value_on::Float64, param_names::Vector{Symbol}, func::Function)
+    effects = [ParamEffect(n, func,
+                   CtStateData("H", value_on), DsStateData("Rt", 1.0))
+               for n in param_names]
+    Npi(effects)
+end
+
+function Npi(value_on::Float64, param_name::Symbol, func::Function)
+    Npi(value_on, [param_name], func)
+end
+
+function Npi(value_on::Float64, coefs::NamedTuple)
+    coef = coefs.coef
+    Npi(value_on, [:beta], original -> original .* coef)
+end
 
 """
     Npi(threshold::Float64, param_effects::Vector{Pair{Symbol, Function}})
 
-Create an Npi with different transformation functions for each parameter.
+Create an Npi with different transformation functions for each parameter
+(all using default H/Rt triggers).
 
 # Arguments
-- `threshold::Float64`: Hospitalization threshold to trigger NPI
+- `threshold::Float64`: Hospitalization threshold for activation
 - `param_effects::Vector{Pair{Symbol, Function}}`: Vector of parameter-to-function pairs
 
 # Example
@@ -243,16 +228,20 @@ Npi(5000.0, [
 ```
 """
 function Npi(value_on::Float64, param_effects::Vector{<:Pair{Symbol, <:Function}})
-    Npi(value_on, [ParamEffect(p.first, p.second) for p in param_effects])
+    Npi(value_on,
+        [ParamEffect(p.first, p.second,
+             CtStateData("H", value_on), DsStateData("Rt", 1.0))
+         for p in param_effects])
 end
 
 """
     Npi(threshold::Float64, param_effects::Dict{Symbol, Function})
 
-Create an Npi with different transformation functions for each parameter (Dict variant).
+Create an Npi with different transformation functions for each parameter
+(all using default H/Rt triggers). Dict-based variant.
 
 # Arguments
-- `threshold::Float64`: Hospitalization threshold to trigger NPI
+- `threshold::Float64`: Hospitalization threshold for activation
 - `param_effects::Dict{Symbol, Function}`: Dict mapping parameter names to transformation functions
 
 # Example
@@ -264,7 +253,10 @@ Npi(5000.0, Dict(
 ```
 """
 function Npi(value_on::Float64, param_effects::Dict{Symbol, <:Function})
-    Npi(value_on, [ParamEffect(name, func) for (name, func) in param_effects])
+    Npi(value_on,
+        [ParamEffect(name, func,
+             CtStateData("H", value_on), DsStateData("Rt", 1.0))
+         for (name, func) in param_effects])
 end
 
 """

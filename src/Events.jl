@@ -11,7 +11,7 @@ using OrdinaryDiffEq
 
 export make_state_condition,
        make_events, make_param_changer, make_param_reset,
-       make_save_events, make_rt_logger, make_timed_npi_callbacks
+       make_save_events, make_rt_logger, make_timed_npi_callbacks, get_coef
 
 """
     make_state_condition(threshold, idx, comparison)::Function
@@ -135,117 +135,103 @@ function make_param_reset(npi::Npi)::Function
 end
 
 """
-    make_events(x::Npi, effect_on, effect_off, savepoints)::CallbackSet
+    make_save_events(npi::Npi, savepoints)
 
-Create a CallbackSet of event callbacks for a reactive (state-dependent) NPI.
+Create SavingCallbacks that record compartment values at specified timepoints.
 
-Generates paired callbacks that trigger intervention activation and deactivation
-based on epidemic state (e.g., hospitalizations reaching a threshold).
-
-# Arguments
-- `x::Npi`: Reactive NPI struct
-- `effect_on::Function`: Callback to execute when intervention activates
-- `effect_off::Function`: Callback to execute when intervention deactivates
-- `savepoints`: Time points at which to check state for triggers
-
-# Returns
-A `CallbackSet` with on/off event callbacks
-"""
-function make_events(x::Npi, effect_on::Function, effect_off::Function, savepoints)::CallbackSet
-    idx_on = DaedalusStructs.get_indices(x.params.comp_on)
-    idx_off = DaedalusStructs.get_indices(x.params.comp_off)
-
-    value_on = get_comp_threshold(x.params.comp_on)
-    value_off = get_comp_threshold(x.params.comp_off)
-
-    # pass appropriate fn `>` or `<` for comparison
-    # checking against U can be replaced by checking x.saved_values
-    function affect_on!(integrator)
-        if length(x.saved_values.saveval) < 2 # need two values for slope
-            return nothing
-        end
-
-        u = x.saved_values.saveval[end][2] # 1st value is flag
-        _u = x.saved_values.saveval[end - 1][2]
-        growing = u > _u
-
-        if u > value_on && growing && !x.ison # only supporting gt for now
-            x.ison = true
-            effect_on(integrator)
-        else
-            nothing
-        end
-    end
-
-    cb_on = PresetTimeCallback(savepoints, affect_on!)
-
-    function affect_off!(integrator)
-        if length(x.saved_values.saveval) == 0
-            return nothing
-        end
-
-        u = x.saved_values.saveval[end][3]
-        if u < value_off && x.ison # only supporting lt for now
-            x.ison = false
-            effect_off(integrator)
-        else
-            nothing
-        end
-    end
-
-    cb_off = PresetTimeCallback(savepoints, affect_off!)
-
-    return CallbackSet(cb_on, cb_off)
-end
-
-"""
-    get_coef(x::Npi)::Float64
-
-Extract the transmission reduction coefficient from an Npi struct.
+Returns a vector of `SavingCallback`s, one per effect. Each callback captures the
+values of that effect's on/off trigger compartments at each savepoint.
 
 # Arguments
-- `x::Npi`: Reactive NPI struct
-
-# Returns
-The transmission coefficient (typically in [0, 1])
-"""
-function get_coef(x::Npi)::Float64
-    return x.coefs.coef
-end
-
-"""
-    make_save_events(x::Npi, savepoints)
-
-Create a SavingCallback that records state values at specified timepoints.
-
-Captures NPI-on state and values of the NPI trigger and deactivation compartments
-at each savepoint, storing results in the Npi's `saved_values` field.
-
-# Arguments
-- `x::Npi`: Reactive NPI struct with `saved_values` field
+- `npi::Npi`: Reactive NPI struct with a vector of ParamEffect specifications
 - `savepoints`: Time points at which to save state values
 
 # Returns
-A `SavingCallback` that writes to `x.saved_values`
+A `Vector{SavingCallback}` — one callback per effect, each writing to `eff.saved_values`
 """
-function make_save_events(x::Npi, savepoints)
-    # the saving callbacks save to x.saved_values
-    savingcb = SavingCallback(
-        (u, t, integrator) -> begin
-            # handle comp on
-            idx_on = DaedalusStructs.get_indices(x.params.comp_on)
-            sum_on = sum(u[idx_on])
+function make_save_events(npi::Npi, savepoints)
+    callbacks = []
+    for eff in npi.effects
+        idx_on = Constants.get_indices(eff.comp_on.name)
+        idx_off = Constants.get_indices(eff.comp_off.name)
 
-            # handle comp off, usually Rt
-            idx_off = DaedalusStructs.get_indices(x.params.comp_off)
-            sum_off = sum(u[idx_off])
+        savingcb = SavingCallback(
+            (u, t, integrator) -> begin
+                sum_on = sum(u[idx_on])
+                sum_off = sum(u[idx_off])
+                return (sum_on, sum_off)
+            end,
+            eff.saved_values, saveat = savepoints
+        )
+        push!(callbacks, savingcb)
+    end
+    return callbacks
+end
 
-            return (x.ison, sum_on, sum_off)
-        end,
-        x.saved_values, saveat = savepoints
-    )
+"""
+    make_events(npi::Npi, savepoints)::CallbackSet
 
-    return savingcb
+Create a CallbackSet of event callbacks for a reactive (state-dependent) NPI.
+
+Generates paired callbacks (on/off) for each effect in the NPI. Each effect's callbacks
+trigger independently based on that effect's own trigger conditions.
+
+# Arguments
+- `npi::Npi`: Reactive NPI struct with a vector of ParamEffect specifications
+- `savepoints`: Time points at which to check state for triggers
+
+# Returns
+A `CallbackSet` with all on/off callbacks for all effects
+"""
+function make_events(npi::Npi, savepoints)::CallbackSet
+    callbacks = []
+
+    for eff in npi.effects
+        value_on = eff.comp_on.value
+        value_off = eff.comp_off.value
+        param_now_sym = Symbol(String(eff.name) * "_now")
+
+        # Activation callback
+        function affect_on!(integrator)
+            if length(eff.saved_values.saveval) < 2
+                return nothing
+            end
+
+            u = eff.saved_values.saveval[end][1]      # latest sum_on
+            _u = eff.saved_values.saveval[end - 1][1] # previous sum_on
+            growing = u > _u
+
+            if u > value_on && growing && !eff.ison
+                eff.ison = true
+                original = getproperty(integrator.p, eff.name)
+                new_val = eff.func(original)
+                setproperty!(integrator.p, param_now_sym, new_val)
+            end
+        end
+
+        cb_on = PresetTimeCallback(savepoints, affect_on!)
+        push!(callbacks, cb_on)
+
+        # Deactivation callback
+        function affect_off!(integrator)
+            if length(eff.saved_values.saveval) == 0
+                return nothing
+            end
+
+            u = eff.saved_values.saveval[end][2]  # latest sum_off
+
+            if u < value_off && eff.ison
+                eff.ison = false
+                original = getproperty(integrator.p, eff.name)
+                setproperty!(integrator.p, param_now_sym, original)
+            end
+        end
+
+        cb_off = PresetTimeCallback(savepoints, affect_off!)
+        push!(callbacks, cb_off)
+    end
+
+    return CallbackSet(callbacks...)
 end
 
 """

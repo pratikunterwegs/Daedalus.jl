@@ -75,6 +75,11 @@ function get_indices(
         return N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA + i_rel_Rt
     end
 
+    if compartment == "I"
+        # Total infectious: Ia + Is
+        return vcat(get_indices("Ia", groups), get_indices("Is", groups))
+    end
+
     idx_comp = get(COMPARTMENT_INDICES, compartment, nothing)
     isnothing(idx_comp) && error("Compartment \"", compartment, "\" not available!")
 
