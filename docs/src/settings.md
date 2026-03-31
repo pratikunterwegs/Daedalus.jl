@@ -18,7 +18,7 @@ using Daedalus
 
 cd = Daedalus.DataLoader.get_country("Australia")
 cm = deepcopy(cd.contact_matrix) # baseline 4×4 contact matrix
-cm_work = cm .* 0.5 # a second setting with halved contacts
+cm_work = cm .* 2.0 # a second setting with doubled contacts
 
 cd_multi = deepcopy(cd)
 cd_multi.contact_matrix = [cm, cm_work]
@@ -27,11 +27,11 @@ cd_multi.contact_matrix = [cm, cm_work]
 `Data.get_settings` returns the number of active contact settings:
 
 ```@example multi_settings
-Daedalus.Data.get_settings(cd) # single matrix → 1
+Daedalus.Data.get_settings(cd)
 ```
 
 ```@example multi_settings
-Daedalus.Data.get_settings(cd_multi) # vector of two → 2
+Daedalus.Data.get_settings(cd_multi)
 ```
 
 ## Running the model with multiple settings
@@ -39,9 +39,7 @@ Daedalus.Data.get_settings(cd_multi) # vector of two → 2
 Pass the modified struct directly to [`daedalus`](@ref) along with infection parameters:
 
 ```@example multi_settings
-infection = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
-infection.r0 = 2.5
-result_multi = daedalus(cd_multi, infection, time_end = 300.0)
+result_multi = daedalus(cd_multi, "sars-cov-2 delta", time_end = 300.0)
 
 times  = Daedalus.Outputs.get_times(result_multi)
 deaths = Daedalus.Outputs.get_values(result_multi, "D", 1)
@@ -50,8 +48,7 @@ println("Total deaths at end: ", round(Int, last(deaths)))
 
 ## Calculating β with multiple settings
 
-`daedalus` computes `β` from the **sum of all contact matrices** via
-[`Data.total_contacts`](@ref):
+`daedalus` computes `β` from the **sum of all contact matrices** via [`Data.total_contacts`](@ref):
 
 ```julia
 # NOTE: example, this code is not run
@@ -61,25 +58,31 @@ beta = get_beta(contacts_unscaled, r0, ...)
 
 The effective reproduction number is therefore calibrated against the *total* contact rate across all settings.
 As a consequence, splitting contacts across multiple equal settings does not change the epidemic.
-Adding a second identical matrix doubles the total contacts, which halves `β`, keeping R0 equal to the `r0` argument:
+Adding a second identical matrix doubles the total contacts, which halves `β`.
 
 ```@example multi_settings
 cd_double = deepcopy(cd)
-cd_double.contact_matrix = [cm, cm]  # two equal settings
+cd_double.contact_matrix = [cm, cm]
 
-infection_single = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
-infection_single.r0 = 2.5
-infection_double = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
-infection_double.r0 = 2.5
+infection = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta");
 
-result_single = daedalus(cd, infection_single, time_end = 300.0, log_rt = false)
-result_double = daedalus(cd_double, infection_double, time_end = 300.0, log_rt = false)
+# get beta used for each country
+beta_single = Daedalus.Helpers.get_beta(
+    Daedalus.Data.total_contacts(
+    Daedalus.Data.prepare_contacts(cd; scaled=false)
+), infection)
 
-d_single = last(Daedalus.Outputs.get_values(result_single, "D", 1))
-d_double = last(Daedalus.Outputs.get_values(result_double, "D", 1))
+beta_double = Daedalus.Helpers.get_beta(
+    Daedalus.Data.total_contacts(
+    Daedalus.Data.prepare_contacts(cd_double; scaled=false)
+), infection)
+```
 
-println("Deaths (1 setting):", round(Int, d_single))
-println("Deaths (2 settings): ", round(Int, d_double))
+Print ``\beta`` values to check that `beta_double` is half of `beta_single`.
+
+```@example multi_settings
+println("β (1 setting): $beta_single")
+println("β (2 settings): $beta_double")
 ```
 
 ## How settings appear in the ODE

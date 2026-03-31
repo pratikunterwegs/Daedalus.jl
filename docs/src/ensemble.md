@@ -2,9 +2,9 @@
 CurrentModule = Daedalus
 ```
 
-# Running multiple R0 values in parallel
+# Modelling effect of parameter uncertainty
 
-The `daedalus` function supports running multiple reproduction number (R0) values in a single call using **vector dispatch**. This is useful for sensitivity analyses, parameter sweeps, or generating epidemic curves across a range of transmission scenarios.
+The `daedalus` function supports running multiple reproduction number (``R_0``) values in a single call using **vector dispatch**. This is useful for sensitivity analyses, parameter sweeps, or generating epidemic curves across a range of transmission scenarios.
 
 **NOTE**: This section is work in progress. This feature uses _DifferentialEquations.jl_ [functionality for working with ensemble models](https://docs.sciml.ai/DiffEqDocs/stable/features/ensemble/).
 Better functionality for working with ensemble outputs, using the inbuilt DE.jl functionality, will be added later.
