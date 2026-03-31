@@ -47,11 +47,18 @@ infection_rt.r0 = 2.5
 Reactive events currently require logging $R_t$ so are not benchmarked with logging turned off.
 
 ```@example benchmarking_reactive_event
-# benchmark for an RTM-exercise run of 100 days
+# benchmark for an RTM-exercise run with reactive NPI
 using Daedalus
 using BenchmarkTools
 
-npi = Daedalus.DaedalusStructs.Npi(20000.0, (coef=0.7,));
+# Create a reactive NPI: reduce transmission when hospitalizations exceed 20,000
+effect = Daedalus.DaedalusStructs.ParamEffect(
+    :beta,
+    x -> x .* 0.3;  # 70% reduction
+    on = ("H", 20000.0),
+    off = ("Rt", 1.0)
+)
+npi = Daedalus.DaedalusStructs.Npi([effect])
 
 infection_re = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
 infection_re.r0 = 5.0
