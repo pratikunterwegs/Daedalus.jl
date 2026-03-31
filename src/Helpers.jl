@@ -4,6 +4,7 @@ module Helpers
 export get_beta, get_ngm, sum_by_age, dominant_eigenvalue, weighted_slice_sum!
 
 using ..Constants
+import ..DataLoader as DL
 
 using LinearAlgebra
 
@@ -62,6 +63,17 @@ function get_beta(cm::Matrix{Float64}, r0::Union{Float64, Vector{Float64}},
     beta = r0 ./ r0a
 
     return beta
+end
+
+function get_beta(cm::Matrix{Float64}, infdata::DL.InfectionData)
+    r0 = infdata.r0
+    sigma = infdata.sigma
+    p_sigma = infdata.p_sigma
+    epsilon = infdata.epsilon
+    gamma_Ia = infdata.gamma_Ia
+    gamma_Is = infdata.gamma_Is
+
+    get_beta(cm, r0, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is)
 end
 
 """
