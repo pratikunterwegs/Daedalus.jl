@@ -18,19 +18,14 @@ using Daedalus
 using Plots
 
 # Run model with three different R0 values
+covid_delta = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
 infections = [
-    Daedalus.DataLoader.get_pathogen("sars-cov-2 delta"),
-    Daedalus.DataLoader.get_pathogen("sars-cov-2 delta"),
-    Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+    covid_delta, deepcopy(covid_delta), deepcopy(covid_delta)
 ]
 infections[1].r0 = 1.5
 infections[2].r0 = 2.5
 infections[3].r0 = 3.5
 results = daedalus("Australia", infections, time_end=600.0);
-
-# Each result contains: sol, saves, npi, r0
-println("Number of results: ", length(results))
-println("R0 values: ", [r.r0 for r in results])
 ```
 
 ## Extracting and comparing results
@@ -42,7 +37,6 @@ Each element in the results vector is a named tuple with the ODE solution and as
 times = Daedalus.Outputs.get_times(results[1]);
 
 # Compare exposed cases across R0 values
-iExpo = Daedalus.Constants.get_indices("E")
 plot(legend=:topleft)
 for (i, result) in enumerate(results)
     exposed = Daedalus.Outputs.get_values(result, "E", 1)
@@ -99,8 +93,14 @@ Non-pharmaceutical interventions (NPIs) are applied consistently across all R0 v
 ```@example ensemble_npi
 using Daedalus
 
-# Define a reactive NPI that triggers at high hospitalizations
-npi = Daedalus.DaedalusStructs.Npi(10000.0, (coef=0.5,))
+# Define a reactive NPI: reduce transmission by 50% when hospitalizations exceed 10,000
+effect = Daedalus.DaedalusStructs.ParamEffect(
+    :beta,
+    x -> x .* 0.5;  # 50% reduction
+    on = ("H", 10000.0),
+    off = ("Rt", 1.0)
+)
+npi = Daedalus.DaedalusStructs.Npi([effect])
 
 # Run ensemble with same NPI applied to all R0 values
 r0_range = [1.5, 2.0, 2.5, 3.0, 3.5]
@@ -108,7 +108,7 @@ infections_npi = [Daedalus.DataLoader.get_pathogen("sars-cov-2 delta") for _ in 
 for (i, r0) in enumerate(r0_range)
     infections_npi[i].r0 = r0
 end
-results_with_npi = daedalus("Australia", infections_npi, npi=npi, time_end=600.0)
+results_with_npi = daedalus("Australia", infections_npi, npi=npi, time_end=600.0);
 ```
 
 ## Large-scale parameter sweeps

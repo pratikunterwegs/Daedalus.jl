@@ -22,6 +22,8 @@ makedocs(;
         "Home" => "index.md",
         "Modelling parameter uncertainty" => "ensemble.md",
         "Implementing interventions" => "npis.md",
+        "Time-dependent interventions" => "time_dep_npis.md",
+        "State-dependent interventions" => "state_dep_npis.md",
         "Multiple contact settings" => "settings.md",
         "Benchmarking" => "benchmarking.md",
         "Parallelisation" => "parallelisation.md",
