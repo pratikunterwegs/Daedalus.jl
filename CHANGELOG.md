@@ -7,51 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- **`ParamEffect` struct**: New struct in `DaedalusStructs` to specify ODE parameter modifications. Pairs a parameter name (`:beta`, `:omega`, etc.) with a transform function.
-- **Flexible `Npi` parameter specifications**: `Npi` now accepts flexible parameter names and transform functions via new constructors:
-  - Primary: `Npi(threshold::Float64, param_names::Vector{Symbol}, func::Function)` — specify multiple parameters with a single transform function
-  - Convenience: `Npi(threshold::Float64, param_name::Symbol, func::Function)` — single parameter variant
-  - Backward-compatible: `Npi(threshold::Float64, coefs::NamedTuple)` — old `(coef=...)` style still works for existing code
-  - **Per-parameter functions (Vector of Pairs)**: `Npi(threshold::Float64, [:param1 => func1, :param2 => func2])` — different transformation function for each parameter
-  - **Per-parameter functions (Dict)**: `Npi(threshold::Float64, Dict(:param1 => func1, :param2 => func2))` — Dict-based variant of per-parameter functions
-- **New `make_param_changer(npi::Npi)` dispatch**: Replaces hardcoded parameter modification logic. Reads parameter specifications from the `Npi` struct and applies all effects in a single callback.
-- **New `make_param_reset(npi::Npi)` dispatch**: Companion to `make_param_changer` that resets all modified parameters to their original values.
+## [0.0.8] - 2026-03-31
+
+### Changed (Breaking)
+- Added struct `ParamEffect` to define NPI target parameter and launch and end triggers
+- Struct `Npi` simplified to a container of `Vector{ParamEffect}`
+  - Removed fields: `params` (NpiData), `saved_values`, `ison` — all now per-effect
+  - New primary constructor: `Npi(effects::Vector{ParamEffect})` for custom per-effect triggers
+- `make_events(npi::Npi, savepoints)`: old signature `make_events(npi, on_func, off_func, savepoints)` removed
+- `make_save_events(npi::Npi, savepoints)`" now returns `Vector{SavingCallback}` (one per effect) instead of single callback
+- Internal logic for parameter modification moved from `make_param_changer(npi)` into `make_events`
+- `result.saves` is now a `Vector{SavedValues}` (one per effect) instead of a single SavedValues
+- Function `get_coef`: Deprecated and now throws an error; marked for removal
+- Flexible `Npi` parameter specifications: `Npi` now accepts flexible parameter names and transform functions via new constructors:
+  - Per-parameter functions (Vector of Pairs): `Npi(threshold::Float64, [:param1 => func1, :param2 => func2])` — different transformation function for each parameter
+  - Per-parameter functions (Dict): `Npi(threshold::Float64, Dict(:param1 => func1, :param2 => func2))` — Dict-based variant of per-parameter functions
+- New `make_param_changer(npi::Npi)` dispatch: Replaces hardcoded parameter modification logic. Reads parameter specifications from the `Npi` struct and applies all effects in a single callback.
+- New `make_param_reset(npi::Npi)` dispatch: Companion to `make_param_changer` that resets all modified parameters to their original values.
 
 ### Changed
-- **`Npi` struct internals**: Replaced `coefs::NamedTuple` field with `effects::Vector{ParamEffect}` to support flexible parameter specifications.
-- **Removed `get_coef` from public API**: No longer exported; `make_param_changer(npi::Npi)` and `make_param_reset(npi::Npi)` handle coefficient extraction internally.
+- `Npi` struct internals: Replaced `coefs::NamedTuple` field with `effects::Vector{ParamEffect}` to support flexible parameter specifications.
+- Removed `get_coef` from public API: No longer exported; `make_param_changer(npi::Npi)` and `make_param_reset(npi::Npi)` handle coefficient extraction internally.
 
-### Migration Guide (for new code using NPIs)
-
-**Old style (still works via backward-compat constructor):**
-```julia
-npi = Npi(5000.0, (coef = 0.4,))  # hardcoded beta modification
-```
-
-**New flexible style:**
-```julia
-# Single parameter
-npi = Npi(5000.0, :beta, x -> x .* 0.4)
-
-# Multiple parameters, same function
-npi = Npi(5000.0, [:beta, :omega], x -> x .* 0.4)
-
-# Custom transform functions
-npi = Npi(5000.0, :beta, x -> 0.6 .* x)  # Same as above
-
-# Different transformations per parameter — Vector of Pairs
-npi = Npi(5000.0, [
-    :beta => x -> x .* 0.4,      # 60% reduction
-    :gamma_Ia => x -> x .* 0.8   # 20% reduction
-])
-
-# Different transformations per parameter — Dict
-npi = Npi(5000.0, Dict(
-    :beta => x -> x .* 0.4,
-    :gamma_Ia => x -> x .* 0.8
-))
-```
 
 ## [0.0.7] - 2026-03-19
 
