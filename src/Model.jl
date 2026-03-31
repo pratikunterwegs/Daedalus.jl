@@ -353,15 +353,13 @@ function daedalus(
             cb_set = timed_callbacks
         end
     elseif isa(npi, Npi)
-        fn_effect_on = make_param_changer(npi)
-        fn_effect_off = make_param_reset(npi)
         save_events = make_save_events(npi, savepoints)
-        events = make_events(npi, fn_effect_on, fn_effect_off, savepoints)
+        events = make_events(npi, savepoints)
         if log_rt
             rt_logger = make_rt_logger(savepoints)
-            cb_set = CallbackSet(events, save_events, rt_logger)
+            cb_set = CallbackSet(events, save_events..., rt_logger)
         else
-            cb_set = CallbackSet(events, save_events)
+            cb_set = CallbackSet(events, save_events...)
         end
     end
 
@@ -374,7 +372,7 @@ function daedalus(
     saved_vals = if isnothing(npi)
         nothing
     elseif isa(npi, Npi)
-        npi.saved_values
+        [eff.saved_values for eff in npi.effects]
     else
         nothing
     end
