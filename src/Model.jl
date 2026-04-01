@@ -29,8 +29,7 @@ and infection parameters, with optional non-pharmaceutical interventions.
   - A [`DataLoader.InfectionData`](@ref) struct with all epidemiological parameters
   - A `Vector{DataLoader.InfectionData}` for ensemble runs with multiple pathogens (R0s extracted)
 - `npi`: Non-pharmaceutical intervention. Can be:
-  - `Npi`: Reactive NPI that responds to epidemic state (hospitalizations, Rt)
-  - `TimedNpi`: Time-limited NPI with predefined start/end times
+  - `Npi`: Container of parameter effects (ReactiveEffect for state-dependent, TimedEffect for time-limited)
   - `nothing`: No intervention (default)
 - `log_rt`: Whether to compute and log effective reproduction number (default: true)
 - `time_end`: Simulation end time in days (default: 100.0)
@@ -59,7 +58,8 @@ result = daedalus("Australia", infection, time_end=200.0)
 
 ## Time-limited intervention
 ```julia
-npi = TimedNpi(15.0, 45.0, 0.7, "moderate_lockdown")
+effect = Daedalus.DaedalusStructs.TimedEffect(:beta, x -> x .* 0.7, x -> x ./ 0.7, 15.0, 45.0)
+npi = Daedalus.DaedalusStructs.Npi([effect])
 result = daedalus("Australia", "sars-cov-2 delta", time_end=200.0, npi=npi)
 ```
 
@@ -273,7 +273,7 @@ end
 
 # Method 1: String pathogen name - fetch and delegate to InfectionData method
 function daedalus(country::Union{String, DataLoader.CountryData}, infection::String;
-        npi::Union{Npi, TimedNpi, Nothing} = nothing,
+        npi::Union{Npi, Nothing} = nothing,
         log_rt::Bool = true,
         time_end::Float64 = 100.0,
         increment::Float64 = 1.0,
@@ -286,7 +286,7 @@ end
 # Method 2: Single InfectionData object
 function daedalus(
         country::Union{String, DataLoader.CountryData}, infection::DataLoader.InfectionData;
-        npi::Union{Npi, TimedNpi, Nothing} = nothing,
+        npi::Union{Npi, Nothing} = nothing,
         log_rt::Bool = true,
         time_end::Float64 = 100.0,
         increment::Float64 = 1.0,
@@ -344,14 +344,6 @@ function daedalus(
             rt_logger = make_rt_logger(savepoints)
             cb_set = CallbackSet(rt_logger)
         end
-    elseif isa(npi, TimedNpi)
-        timed_callbacks = make_timed_npi_callbacks(npi)
-        if log_rt
-            rt_logger = make_rt_logger(savepoints)
-            cb_set = CallbackSet(timed_callbacks, rt_logger)
-        else
-            cb_set = timed_callbacks
-        end
     elseif isa(npi, Npi)
         save_events = make_save_events(npi, savepoints)
         events = make_events(npi, savepoints)
@@ -372,7 +364,7 @@ function daedalus(
     saved_vals = if isnothing(npi)
         nothing
     elseif isa(npi, Npi)
-        [eff.saved_values for eff in npi.effects]
+        [eff.saved_values for eff in npi.effects if isa(eff, ReactiveEffect)]
     else
         nothing
     end

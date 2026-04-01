@@ -5,8 +5,8 @@ using ..Constants
 
 using DiffEqCallbacks
 
-export Params, Npi, TimedNpi, ParamEffect, StateData, CtStateData, DsStateData,
-       get_indices, n_phases, total_duration
+export Params, Npi, ReactiveEffect, TimedEffect, StateData, CtStateData, DsStateData,
+       get_indices
 
 """
     Params
@@ -43,7 +43,7 @@ abstract type Event end
 
 abstract type StateData end
 
-abstract type Effect end
+abstract type ParamEffect end
 
 struct CtStateData <: StateData
     name::String
@@ -66,10 +66,11 @@ struct DsStateData <: StateData
 end
 
 """
-    ParamEffect
+    ReactiveEffect
 
-A mutable struct specifying how an NPI modifies a single ODE parameter, including
-independent trigger conditions for activation and deactivation.
+A mutable struct specifying how an NPI modifies a single ODE parameter in response to
+epidemic state (reactive/state-dependent). Each effect has independent trigger conditions
+for activation and deactivation.
 
 # Fields
 - `target::Symbol`: The parameter to modify (e.g., `:beta`, `:omega`)
@@ -86,24 +87,24 @@ independent trigger conditions for activation and deactivation.
 
 ## Full constructor (with StateData objects)
 ```julia
-ParamEffect(target::Symbol, func::Function, comp_on::StateData, comp_off::StateData)
+ReactiveEffect(target::Symbol, func::Function, comp_on::StateData, comp_off::StateData)
 ```
 
 ## Keyword convenience constructor
 ```julia
-ParamEffect(target::Symbol, func::Function, reset_func::Function; on::Tuple{String, Float64}, off::Tuple{String, Float64})
+ReactiveEffect(target::Symbol, func::Function, reset_func::Function; on::Tuple{String, Float64}, off::Tuple{String, Float64})
 ```
 
 Example:
 ```julia
 # Reduce beta by 60% when H > 5000, restore when Rt < 1.0
-ParamEffect(:beta, x -> x .* 0.4, x -> x ./ 0.4; on=("H", 5000.0), off=("Rt", 1.0))
+ReactiveEffect(:beta, x -> x .* 0.4, x -> x ./ 0.4; on=("H", 5000.0), off=("Rt", 1.0))
 
 # Reduce gamma_Ia by 20% when D > 100, restore when I < 8000
-ParamEffect(:gamma_Ia, x -> x .* 0.8, x -> x ./ 0.8; on=("D", 100.0), off=("I", 8000.0))
+ReactiveEffect(:gamma_Ia, x -> x .* 0.8, x -> x ./ 0.8; on=("D", 100.0), off=("I", 8000.0))
 ```
 """
-mutable struct ParamEffect <: Effect
+mutable struct ReactiveEffect <: ParamEffect
     target::Symbol
     func::Function
     reset_func::Function
@@ -113,7 +114,7 @@ mutable struct ParamEffect <: Effect
     ison::Bool
 
     # Full constructor with StateData objects
-    function ParamEffect(target::Symbol, func::Function,
+    function ReactiveEffect(target::Symbol, func::Function,
             reset_func::Function,
             comp_on::StateData, comp_off::StateData)
         sv = SavedValues(Float64, Tuple{Float64, Float64})
@@ -121,11 +122,11 @@ mutable struct ParamEffect <: Effect
     end
 end
 
-# Keyword convenience constructor for ParamEffect
-function ParamEffect(target::Symbol, func::Function, reset_func::Function;
+# Keyword convenience constructor for ReactiveEffect
+function ReactiveEffect(target::Symbol, func::Function, reset_func::Function;
         on::Tuple{String, Float64},
         off::Tuple{String, Float64})
-    ParamEffect(target, func, reset_func, CtStateData(on...), DsStateData(off...))
+    ReactiveEffect(target, func, reset_func, CtStateData(on...), DsStateData(off...))
 end
 
 """
@@ -139,207 +140,93 @@ function get_indices(x::StateData)
 end
 
 """
-    Npi
+    TimedEffect
 
-A mutable struct to specify a reactive (state-dependent) NPI. It is a container of
-`ParamEffect`s, each with independent trigger conditions for activation and deactivation.
+A mutable struct specifying how an NPI modifies a single ODE parameter at
+specified time points (time-limited / timed intervention).
 
 # Fields
-- `effects::Vector{ParamEffect}`: Parameter modifications to apply, each with its own trigger
+- `target::Symbol`: The parameter to modify (e.g., `:beta`, `:omega`)
+- `func::Function`: A function mapping the original parameter value to the modified value
+- `reset_func::Function`: A function mapping the modified parameter value back to the original value
+- `start_time::Float64`: Time (days) at which to activate the effect
+- `end_time::Float64`: Time (days) at which to deactivate the effect
+
+# Constructor
+```julia
+TimedEffect(target::Symbol, func::Function, reset_func::Function, start_time::Float64, end_time::Float64)
+```
+
+# Example
+```julia
+# Reduce beta by 30% from day 10 to day 40
+TimedEffect(:beta, x -> x .* 0.7, x -> x ./ 0.7, 10.0, 40.0)
+
+# Increase omega by 20% from day 15 to day 50
+TimedEffect(:omega, x -> x .* 1.2, x -> x ./ 1.2, 15.0, 50.0)
+```
+"""
+mutable struct TimedEffect <: ParamEffect
+    target::Symbol
+    func::Function
+    reset_func::Function
+    start_time::Float64
+    end_time::Float64
+
+    function TimedEffect(target::Symbol, func::Function, reset_func::Function,
+            start_time::Float64, end_time::Float64)
+        return new(target, func, reset_func, start_time, end_time)
+    end
+end
+
+"""
+    Npi
+
+A mutable struct to specify non-pharmaceutical interventions (NPIs). It is a unified container
+of parameter effects (both reactive and timed), each specifying how to modify an ODE parameter
+and when to activate/deactivate.
+
+# Fields
+- `effects::Vector{ParamEffect}`: Parameter modifications to apply. May contain both
+  `ReactiveEffect` (state-dependent) and `TimedEffect` (time-limited) objects.
 
 # Constructors
 
 ## Direct container constructor
 ```julia
-Npi(effects::Vector{ParamEffect})
+Npi(effects::AbstractVector{<:ParamEffect})
 ```
 
 # Examples
 
 ```julia
+# Reactive effects: respond to epidemic state
 npi = Npi([
-    ParamEffect(:beta,     x -> x .* 0.4, x -> x ./ 0.4; on=("H", 5000.0), off=("Rt", 1.0)),
-    ParamEffect(:gamma_Ia, x -> x .* 0.8, x -> x ./ 0.8; on=("D",  100.0), off=("Rt", 1.0)),
-    ParamEffect(:gamma_Is, x -> x .* 0.8, x -> x ./ 0.8; on=("I", 8000.0), off=("H", 3000.0)),
+    ReactiveEffect(:beta, x -> x .* 0.4, x -> x ./ 0.4; on=("H", 5000.0), off=("Rt", 1.0)),
+    ReactiveEffect(:gamma_Ia, x -> x .* 0.8, x -> x ./ 0.8; on=("D",  100.0), off=("Rt", 1.0)),
+])
+
+# Timed effects: activate at specified times
+npi = Npi([
+    TimedEffect(:beta, x -> x .* 0.7, x -> x ./ 0.7, 10.0, 40.0),
+    TimedEffect(:omega, x -> x .* 1.2, x -> x ./ 1.2, 15.0, 50.0),
+])
+
+# Mixed: both reactive and timed effects
+npi = Npi([
+    ReactiveEffect(:beta, x -> x .* 0.6, x -> x ./ 0.6; on=("H", 10000.0), off=("Rt", 1.0)),
+    TimedEffect(:omega, x -> x .* 1.1, x -> x ./ 1.1, 20.0, 60.0),
 ])
 ```
 """
 mutable struct Npi <: Event
     effects::Vector{ParamEffect}
 
-    # Direct constructor (vector of ParamEffect)
-    function Npi(effects::Vector{ParamEffect})
-        return new(effects)
+    # Direct constructor (accepts any vector of ParamEffect subtypes)
+    function Npi(effects::AbstractVector{<:ParamEffect})
+        return new(Vector{ParamEffect}(effects))
     end
 end
 
-"""
-    TimedNpi
-
-A struct to specify time-limited non-pharmaceutical interventions (NPIs).
-Unlike `Npi`, these interventions are purely time-based and do not respond
-to epidemic state. Supports multiple intervention phases with different
-intensity levels.
-
-# Fields
-- `start_times::Vector{Float64}`: Start times for each intervention phase (days)
-- `end_times::Vector{Float64}`: End times for each intervention phase (days)
-- `coefs::Vector{Float64}`: Transmission reduction coefficient for each phase.
-  Values should be in [0, 1] where 1 = no intervention, 0 = complete transmission block.
-- `identifier::String`: Name or description of the intervention strategy
-
-# Constraints
-- All vectors must have the same length
-- `end_times[i] >= start_times[i]` for all i
-- Time intervals must be non-overlapping
-- Times must be sorted in ascending order
-- Coefficients must be in [0, 1]
-
-# Example
-```julia
-# Three-phase intervention: moderate → strict → relaxed
-timed_npi = TimedNpi(
-    [10.0, 30.0, 60.0],  # start times
-    [25.0, 55.0, 90.0],  # end times
-    [0.7, 0.3, 0.5],     # coefs (0.7 = 30% reduction, 0.3 = 70% reduction)
-    "three_phase_lockdown"
-)
-```
-"""
-struct TimedNpi <: Event
-    start_times::Vector{Float64}
-    end_times::Vector{Float64}
-    coefs::Vector{Float64}
-    identifier::String
-
-    function TimedNpi(
-            start_times::Vector{Float64},
-            end_times::Vector{Float64},
-            coefs::Vector{Float64},
-            identifier::String = "custom_timed"
-    )
-        # Validate vector lengths match
-        n_phases = length(start_times)
-        if length(end_times) != n_phases
-            throw(ArgumentError(
-                "end_times must have same length as start_times " *
-                "(got $(length(end_times)), expected $n_phases)"
-            ))
-        end
-        if length(coefs) != n_phases
-            throw(ArgumentError(
-                "coefs must have same length as start_times " *
-                "(got $(length(coefs)), expected $n_phases)"
-            ))
-        end
-
-        # Validate times are non-negative
-        if !all(start_times .>= 0.0)
-            throw(ArgumentError("start_times must be non-negative"))
-        end
-        if !all(end_times .>= 0.0)
-            throw(ArgumentError("end_times must be non-negative"))
-        end
-
-        # Validate end_times >= start_times
-        for i in 1:n_phases
-            if end_times[i] < start_times[i]
-                throw(ArgumentError(
-                    "end_times[$i] ($(end_times[i])) must be >= " *
-                    "start_times[$i] ($(start_times[i]))"
-                ))
-            end
-        end
-
-        # Validate times are sorted
-        if !issorted(start_times)
-            throw(ArgumentError("start_times must be in ascending order"))
-        end
-        if !issorted(end_times)
-            throw(ArgumentError("end_times must be in ascending order"))
-        end
-
-        # Validate non-overlapping intervals
-        for i in 1:(n_phases - 1)
-            if end_times[i] >= start_times[i + 1]
-                throw(ArgumentError(
-                    "Overlapping intervals detected: phase $i ends at " *
-                    "$(end_times[i]) but phase $(i+1) starts at " *
-                    "$(start_times[i+1])"
-                ))
-            end
-        end
-
-        # Validate coefficients in [0, 1]
-        if !all(0.0 .<= coefs .<= 1.0)
-            throw(ArgumentError("coefs must be in range [0.0, 1.0]"))
-        end
-
-        new(start_times, end_times, coefs, identifier)
-    end
-
-    # Convenience constructor for single-phase intervention
-    function TimedNpi(
-            start_time::Float64,
-            end_time::Float64,
-            coef::Float64,
-            identifier::String = "single_phase"
-    )
-        TimedNpi([start_time], [end_time], [coef], identifier)
-    end
-end
-
-"""
-    n_phases(npi::TimedNpi)
-
-Return the number of intervention phases in a TimedNpi.
-
-# Example
-```julia
-npi = TimedNpi([10.0, 30.0], [20.0, 40.0], [0.7, 0.5])
-n_phases(npi)  # Returns: 2
-```
-"""
-n_phases(npi::TimedNpi) = length(npi.start_times)
-
-"""
-    total_duration(npi::TimedNpi)
-
-Calculate the total duration of all intervention phases combined (not including
-gaps between phases).
-
-# Returns
-- Total days of active intervention
-
-# Example
-```julia
-npi = TimedNpi([10.0, 30.0], [20.0, 40.0], [0.7, 0.5])
-# Phase 1: 10 days (10-20), Phase 2: 10 days (30-40)
-total_duration(npi)  # Returns: 20.0
-```
-"""
-function total_duration(npi::TimedNpi)
-    return sum(npi.end_times .- npi.start_times)
-end
-
-# Base.show method for pretty printing
-function Base.show(io::IO, npi::TimedNpi)
-    n = n_phases(npi)
-    total_dur = total_duration(npi)
-
-    println(io, "TimedNpi: $(npi.identifier)")
-    println(io, "  Number of phases: $n")
-    println(io, "  Total duration: $(round(total_dur, digits=1)) days")
-
-    for i in 1:n
-        duration = npi.end_times[i] - npi.start_times[i]
-        reduction = round((1.0 - npi.coefs[i]) * 100, digits = 1)
-        println(
-            io,
-            "  Phase $i: days $(npi.start_times[i])-$(npi.end_times[i]) " *
-            "($(round(duration, digits=1))d), $(reduction)% reduction"
-        )
-    end
-end
 
 end

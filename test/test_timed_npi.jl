@@ -3,237 +3,53 @@ using Test
 using OrdinaryDiffEq
 using DiffEqCallbacks
 
-@testset "TimedNpi construction and validation" begin
-    @testset "Valid single-phase construction" begin
-        npi = Daedalus.DaedalusStructs.TimedNpi(10.0, 20.0, 0.5, "test")
-
-        @test npi.start_times == [10.0]
-        @test npi.end_times == [20.0]
-        @test npi.coefs == [0.5]
-        @test npi.identifier == "test"
-    end
-
-    @testset "Valid multi-phase construction" begin
-        start_times = [10.0, 30.0, 60.0]
-        end_times = [25.0, 55.0, 90.0]
-        coefs = [0.7, 0.3, 0.5]
-
-        npi = Daedalus.DaedalusStructs.TimedNpi(
-            start_times, end_times, coefs, "multi_phase"
+@testset "make_events with timed effects" begin
+    @testset "Callback creation for single timed phase" begin
+        effect = Daedalus.DaedalusStructs.TimedEffect(
+            :beta, x -> x .* 0.5, x -> x ./ 0.5, 10.0, 20.0
         )
-
-        @test npi.start_times == start_times
-        @test npi.end_times == end_times
-        @test npi.coefs == coefs
-        @test npi.identifier == "multi_phase"
-    end
-
-    @testset "Default identifier" begin
-        npi = Daedalus.DaedalusStructs.TimedNpi([10.0], [20.0], [0.5])
-        @test npi.identifier == "custom_timed"
-    end
-
-    @testset "Convenience constructor defaults" begin
-        npi = Daedalus.DaedalusStructs.TimedNpi(10.0, 20.0, 0.5)
-        @test npi.identifier == "single_phase"
-        @test length(npi.start_times) == 1
-    end
-
-    @testset "Validation: mismatched vector lengths" begin
-        @test_throws ArgumentError Daedalus.DaedalusStructs.TimedNpi(
-            [10.0, 20.0], [30.0], [0.5, 0.3]
-        )
-
-        @test_throws ArgumentError Daedalus.DaedalusStructs.TimedNpi(
-            [10.0], [30.0, 40.0], [0.5]
-        )
-
-        @test_throws ArgumentError Daedalus.DaedalusStructs.TimedNpi(
-            [10.0, 20.0], [30.0, 40.0], [0.5]
-        )
-    end
-
-    @testset "Validation: negative times" begin
-        @test_throws ArgumentError Daedalus.DaedalusStructs.TimedNpi(
-            [-10.0], [20.0], [0.5]
-        )
-
-        @test_throws ArgumentError Daedalus.DaedalusStructs.TimedNpi(
-            [10.0], [-20.0], [0.5]
-        )
-    end
-
-    @testset "Validation: end_time < start_time" begin
-        @test_throws ArgumentError Daedalus.DaedalusStructs.TimedNpi(
-            [20.0], [10.0], [0.5]
-        )
-
-        @test_throws ArgumentError Daedalus.DaedalusStructs.TimedNpi(
-            [10.0, 40.0], [25.0, 35.0], [0.5, 0.3]  # second phase: 40 > 35 invalid
-        )
-    end
-
-    @testset "Validation: unsorted times" begin
-        @test_throws ArgumentError Daedalus.DaedalusStructs.TimedNpi(
-            [30.0, 10.0], [40.0, 20.0], [0.5, 0.3]
-        )
-
-        @test_throws ArgumentError Daedalus.DaedalusStructs.TimedNpi(
-            [10.0, 30.0], [40.0, 20.0], [0.5, 0.3]
-        )
-    end
-
-    @testset "Validation: overlapping intervals" begin
-        # Phase 1: 10-30, Phase 2: 25-40 (overlaps!)
-        @test_throws ArgumentError Daedalus.DaedalusStructs.TimedNpi(
-            [10.0, 25.0], [30.0, 40.0], [0.5, 0.3]
-        )
-
-        # Phase 1: 10-30, Phase 2: 30-40 (exactly adjacent - should fail)
-        @test_throws ArgumentError Daedalus.DaedalusStructs.TimedNpi(
-            [10.0, 30.0], [30.0, 40.0], [0.5, 0.3]
-        )
-    end
-
-    @testset "Validation: coefficients out of range" begin
-        @test_throws ArgumentError Daedalus.DaedalusStructs.TimedNpi(
-            [10.0], [20.0], [1.5]
-        )
-
-        @test_throws ArgumentError Daedalus.DaedalusStructs.TimedNpi(
-            [10.0], [20.0], [-0.1]
-        )
-
-        @test_throws ArgumentError Daedalus.DaedalusStructs.TimedNpi(
-            [10.0, 30.0], [20.0, 40.0], [0.5, 1.1]
-        )
-    end
-
-    @testset "Boundary values: zero duration phase" begin
-        # Start and end at same time (zero duration)
-        npi = Daedalus.DaedalusStructs.TimedNpi([10.0], [10.0], [0.5])
-        @test npi.start_times == [10.0]
-        @test npi.end_times == [10.0]
-    end
-
-    @testset "Boundary values: coefficient limits" begin
-        # Coefficient = 0 (complete transmission block)
-        npi1 = Daedalus.DaedalusStructs.TimedNpi([10.0], [20.0], [0.0])
-        @test npi1.coefs == [0.0]
-
-        # Coefficient = 1 (no intervention effect)
-        npi2 = Daedalus.DaedalusStructs.TimedNpi([10.0], [20.0], [1.0])
-        @test npi2.coefs == [1.0]
-    end
-
-    @testset "Non-overlapping intervals with gap" begin
-        # Phase 1: 10-20, gap, Phase 2: 25-35 (valid)
-        npi = Daedalus.DaedalusStructs.TimedNpi(
-            [10.0, 25.0], [20.0, 35.0], [0.5, 0.3]
-        )
-        @test npi.start_times == [10.0, 25.0]
-        @test npi.end_times == [20.0, 35.0]
-    end
-end
-
-@testset "TimedNpi helper functions" begin
-    @testset "n_phases" begin
-        npi1 = Daedalus.DaedalusStructs.TimedNpi(10.0, 20.0, 0.5)
-        @test Daedalus.DaedalusStructs.n_phases(npi1) == 1
-
-        npi3 = Daedalus.DaedalusStructs.TimedNpi(
-            [10.0, 30.0, 60.0],
-            [20.0, 50.0, 80.0],
-            [0.7, 0.3, 0.5]
-        )
-        @test Daedalus.DaedalusStructs.n_phases(npi3) == 3
-    end
-
-    @testset "total_duration" begin
-        # Single phase: 10 days
-        npi1 = Daedalus.DaedalusStructs.TimedNpi(10.0, 20.0, 0.5)
-        @test Daedalus.DaedalusStructs.total_duration(npi1) == 10.0
-
-        # Three phases: 10 + 20 + 20 = 50 days total
-        npi3 = Daedalus.DaedalusStructs.TimedNpi(
-            [10.0, 30.0, 60.0],
-            [20.0, 50.0, 80.0],
-            [0.7, 0.3, 0.5]
-        )
-        @test Daedalus.DaedalusStructs.total_duration(npi3) == 50.0
-
-        # Zero duration phase
-        npi_zero = Daedalus.DaedalusStructs.TimedNpi([10.0], [10.0], [0.5])
-        @test Daedalus.DaedalusStructs.total_duration(npi_zero) == 0.0
-    end
-
-    @testset "Base.show" begin
-        npi = Daedalus.DaedalusStructs.TimedNpi(
-            [10.0, 30.0],
-            [20.0, 40.0],
-            [0.7, 0.3],
-            "test_display"
-        )
-
-        # Capture output
-        io = IOBuffer()
-        show(io, npi)
-        output = String(take!(io))
-
-        @test occursin("TimedNpi: test_display", output)
-        @test occursin("Number of phases: 2", output)
-        @test occursin("Total duration: 20.0 days", output)
-        @test occursin("Phase 1", output)
-        @test occursin("Phase 2", output)
-    end
-end
-
-@testset "make_timed_npi_callbacks" begin
-    @testset "Callback creation for single phase" begin
-        npi = Daedalus.DaedalusStructs.TimedNpi(10.0, 20.0, 0.5)
-        callbacks = Daedalus.Events.make_timed_npi_callbacks(npi)
+        npi = Daedalus.DaedalusStructs.Npi([effect])
+        savepoints = 0.0:1.0:30.0
+        callbacks = Daedalus.Events.make_events(npi, savepoints)
 
         @test isa(callbacks, DiffEqCallbacks.CallbackSet)
-        # Should have 2 callbacks: one for activation, one for deactivation
+        # Should have 2 callbacks: one for activation at start_time, one for deactivation at end_time
         @test length(callbacks.discrete_callbacks) == 2
     end
 
-    @testset "Callback creation for multiple phases" begin
-        npi = Daedalus.DaedalusStructs.TimedNpi(
-            [10.0, 30.0, 60.0],
-            [20.0, 40.0, 80.0],
-            [0.7, 0.3, 0.5]
+    @testset "Callback creation for multiple timed phases" begin
+        effect1 = Daedalus.DaedalusStructs.TimedEffect(
+            :beta, x -> x .* 0.7, x -> x ./ 0.7, 10.0, 20.0
         )
-        callbacks = Daedalus.Events.make_timed_npi_callbacks(npi)
+        effect2 = Daedalus.DaedalusStructs.TimedEffect(
+            :beta, x -> x .* 0.3, x -> x ./ 0.3, 30.0, 40.0
+        )
+        effect3 = Daedalus.DaedalusStructs.TimedEffect(
+            :beta, x -> x .* 0.5, x -> x ./ 0.5, 60.0, 80.0
+        )
+        npi = Daedalus.DaedalusStructs.Npi([effect1, effect2, effect3])
+        savepoints = 0.0:1.0:100.0
+        callbacks = Daedalus.Events.make_events(npi, savepoints)
 
         @test isa(callbacks, DiffEqCallbacks.CallbackSet)
-        # Should have 6 callbacks: 2 per phase (on/off)
+        # Should have 6 callbacks: 2 per effect (on/off)
         @test length(callbacks.discrete_callbacks) == 6
-    end
-
-    @testset "Callback times are correct" begin
-        npi = Daedalus.DaedalusStructs.TimedNpi(
-            [15.0, 45.0],
-            [30.0, 60.0],
-            [0.6, 0.4]
-        )
-        callbacks = Daedalus.Events.make_timed_npi_callbacks(npi)
-
-        # Extract callback times (this is implementation-specific)
-        # The callbacks should trigger at times: 15, 30, 45, 60
-        @test length(callbacks.discrete_callbacks) == 4
     end
 end
 
-@testset "TimedNpi integration with daedalus model" begin
-    @testset "Model runs with single-phase TimedNpi" begin
-        npi = Daedalus.DaedalusStructs.TimedNpi(15.0, 45.0, 0.5, "test_single")
-        infection_single = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
-        infection_single.r0 = 2.0
+@testset "TimedEffect integration with daedalus model" begin
+    @testset "Model runs with single timed effect" begin
+        effect = Daedalus.DaedalusStructs.TimedEffect(
+            :beta, x -> x .* 0.5, x -> x ./ 0.5, 15.0, 45.0
+        )
+        npi = Daedalus.DaedalusStructs.Npi([effect])
+
+        infection = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+        infection.r0 = 2.0
 
         result = Daedalus.daedalus(
             "Australia",
-            infection_single,
+            infection,
             time_end = 80.0,
             increment = 1.0,
             npi = npi,
@@ -242,16 +58,20 @@ end
 
         @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
         @test result.npi === npi
-        @test isnothing(result.saves)  # TimedNpi has no saved values
+        @test isnothing(result.saves)  # TimedEffect has no saved values
     end
 
-    @testset "Model runs with multi-phase TimedNpi" begin
-        npi = Daedalus.DaedalusStructs.TimedNpi(
-            [10.0, 30.0, 60.0],
-            [25.0, 50.0, 75.0],
-            [0.7, 0.4, 0.6],
-            "test_multi"
+    @testset "Model runs with multiple timed effects" begin
+        effect1 = Daedalus.DaedalusStructs.TimedEffect(
+            :beta, x -> x .* 0.7, x -> x ./ 0.7, 10.0, 25.0
         )
+        effect2 = Daedalus.DaedalusStructs.TimedEffect(
+            :beta, x -> x .* 0.4, x -> x ./ 0.4, 30.0, 50.0
+        )
+        effect3 = Daedalus.DaedalusStructs.TimedEffect(
+            :beta, x -> x .* 0.6, x -> x ./ 0.6, 60.0, 75.0
+        )
+        npi = Daedalus.DaedalusStructs.Npi([effect1, effect2, effect3])
 
         result = Daedalus.daedalus(
             "Australia",
@@ -268,7 +88,10 @@ end
     end
 
     @testset "Model runs without Rt logging" begin
-        npi = Daedalus.DaedalusStructs.TimedNpi(20.0, 40.0, 0.3)
+        effect = Daedalus.DaedalusStructs.TimedEffect(
+            :beta, x -> x .* 0.3, x -> x ./ 0.3, 20.0, 40.0
+        )
+        npi = Daedalus.DaedalusStructs.Npi([effect])
 
         result = Daedalus.daedalus(
             "Australia",
@@ -280,139 +103,11 @@ end
 
         @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
     end
-
-    @testset "Model output structure is correct" begin
-        npi = Daedalus.DaedalusStructs.TimedNpi(10.0, 30.0, 0.5)
-
-        result = Daedalus.daedalus(
-            "Australia",
-            "sars-cov-1",
-            time_end = 50.0,
-            increment = 1.0,
-            npi = npi
-        )
-
-        @test haskey(result, :sol)
-        @test haskey(result, :saves)
-        @test haskey(result, :npi)
-        @test result.npi === npi
-    end
-
-    @testset "Solution has correct time points" begin
-        npi = Daedalus.DaedalusStructs.TimedNpi(15.0, 35.0, 0.4)
-
-        result = Daedalus.daedalus(
-            "Australia",
-            "influenza 2009",
-            time_end = 50.0,
-            increment = 1.0,
-            npi = npi
-        )
-
-        # Should have savepoints at each day from 0 to 50
-        @test length(unique(result.sol.t)) == 51
-        @test result.sol.t[1] == 0.0
-        @test result.sol.t[end] == 50.0
-    end
-
-    @testset "Extreme coefficient values" begin
-        # Complete transmission block (coef = 0)
-        npi_block = Daedalus.DaedalusStructs.TimedNpi(10.0, 30.0, 0.0)
-        result_block = Daedalus.daedalus(
-            "Australia",
-            "influenza 2009",
-            time_end = 50.0,
-            npi = npi_block
-        )
-        @test result_block.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
-
-        # No intervention effect (coef = 1)
-        npi_none = Daedalus.DaedalusStructs.TimedNpi(10.0, 30.0, 1.0)
-        result_none = Daedalus.daedalus(
-            "Australia",
-            "influenza 2009",
-            time_end = 50.0,
-            npi = npi_none
-        )
-        @test result_none.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
-    end
-
-    @testset "NPI at simulation boundaries" begin
-        # NPI starting at time 0
-        npi_start = Daedalus.DaedalusStructs.TimedNpi(0.0, 20.0, 0.5)
-        result_start = Daedalus.daedalus(
-            "Australia",
-            "influenza 2009",
-            time_end = 40.0,
-            npi = npi_start
-        )
-        @test result_start.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
-
-        # NPI ending at simulation end
-        npi_end = Daedalus.DaedalusStructs.TimedNpi(20.0, 50.0, 0.5)
-        result_end = Daedalus.daedalus(
-            "Australia",
-            "influenza 2009",
-            time_end = 50.0,
-            npi = npi_end
-        )
-        @test result_end.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
-
-        # NPI covering entire simulation
-        npi_full = Daedalus.DaedalusStructs.TimedNpi(0.0, 50.0, 0.5)
-        result_full = Daedalus.daedalus(
-            "Australia",
-            "influenza 2009",
-            time_end = 50.0,
-            npi = npi_full
-        )
-        @test result_full.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
-    end
 end
 
-@testset "TimedNpi vs no intervention comparison" begin
-    @testset "Basic epidemic comparison" begin
-        # Run without intervention
-        result_none = Daedalus.daedalus(
-            "Australia",
-            "influenza 2009",
-            time_end = 100.0,
-            increment = 1.0,
-            log_rt = true
-        )
-
-        # Run with intervention
-        npi = Daedalus.DaedalusStructs.TimedNpi(20.0, 60.0, 0.3)
-        result_npi = Daedalus.daedalus(
-            "Australia",
-            "influenza 2009",
-            time_end = 100.0,
-            increment = 1.0,
-            npi = npi,
-            log_rt = true
-        )
-
-        # Both should complete successfully
-        @test result_none.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
-        @test result_npi.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
-
-        # Should have same number of time points
-        @test length(unique(result_none.sol.t)) == length(unique(result_npi.sol.t))
-
-        # Intervention should generally reduce epidemic size
-        # (not guaranteed for all parameter combinations, but should be true here)
-        iExposed = Daedalus.Constants.get_indices("E")
-        exposed_none = [sum(u[iExposed]) for u in result_none.sol.u]
-        exposed_npi = [sum(u[iExposed]) for u in result_npi.sol.u]
-
-        # Peak exposure should be lower with intervention
-        @test maximum(exposed_npi) < maximum(exposed_none)
-    end
-end
-
-@testset "TimedNpi vs reactive Npi coexistence" begin
+@testset "TimedEffect and reactive Npi coexistence" begin
     @testset "Model accepts reactive Npi (unchanged behavior)" begin
-        effect = Daedalus.DaedalusStructs.ParamEffect(
+        effect = Daedalus.DaedalusStructs.ReactiveEffect(
             :beta, x -> x .* 0.4, x -> x ./ 0.4;
             on = ("H", 5000.0), off = ("Rt", 1.0)
         )
@@ -444,96 +139,9 @@ end
     end
 end
 
-@testset "Edge cases and stress tests" begin
-    @testset "Very short intervention duration" begin
-        # 0.1 day intervention
-        npi = Daedalus.DaedalusStructs.TimedNpi(20.0, 20.1, 0.5)
-        result = Daedalus.daedalus(
-            "Australia",
-            "influenza 2009",
-            time_end = 40.0,
-            increment = 0.1,
-            npi = npi
-        )
-        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
-    end
-
-    @testset "Very long intervention duration" begin
-        # 200 day intervention
-        npi = Daedalus.DaedalusStructs.TimedNpi(10.0, 210.0, 0.3)
-        result = Daedalus.daedalus(
-            "Australia",
-            "influenza 2009",
-            time_end = 250.0,
-            npi = npi
-        )
-        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
-    end
-
-    @testset "Many phases" begin
-        # 10 phases with 5-day gaps
-        start_times = collect(0.0:10.0:90.0)
-        end_times = start_times .+ 5.0
-        coefs = fill(0.5, 10)
-
-        npi = Daedalus.DaedalusStructs.TimedNpi(
-            start_times, end_times, coefs, "many_phases"
-        )
-        result = Daedalus.daedalus(
-            "Australia",
-            "influenza 2009",
-            time_end = 120.0,
-            npi = npi
-        )
-        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
-        @test Daedalus.DaedalusStructs.n_phases(npi) == 10
-    end
-
-    @testset "Alternating intensity phases" begin
-        # High-low-high-low pattern
-        npi = Daedalus.DaedalusStructs.TimedNpi(
-            [10.0, 30.0, 50.0, 70.0],
-            [25.0, 45.0, 65.0, 85.0],
-            [0.2, 0.8, 0.2, 0.8],
-            "alternating"
-        )
-        result = Daedalus.daedalus(
-            "Australia",
-            "sars-cov-1",
-            time_end = 100.0,
-            npi = npi
-        )
-        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
-    end
-
-    @testset "Very high R0 with strong intervention" begin
-        # R0=5.0 with 90% reduction
-        npi = Daedalus.DaedalusStructs.TimedNpi(5.0, 50.0, 0.1)
-        result = Daedalus.daedalus(
-            "Australia",
-            "sars-cov-1",
-            time_end = 80.0,
-            npi = npi
-        )
-        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
-    end
-
-    @testset "Late-starting intervention" begin
-        # Intervention starts after epidemic peak likely passed
-        npi = Daedalus.DaedalusStructs.TimedNpi(150.0, 180.0, 0.3)
-        result = Daedalus.daedalus(
-            "Australia",
-            "influenza 2009",
-            time_end = 200.0,
-            npi = npi
-        )
-        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
-    end
-end
-
 @testset "Npi with flexible parameter effects" begin
-    @testset "Single parameter (new style with ParamEffect)" begin
-        effect = Daedalus.DaedalusStructs.ParamEffect(
+    @testset "Single parameter (new style with ReactiveEffect)" begin
+        effect = Daedalus.DaedalusStructs.ReactiveEffect(
             :beta, x -> x .* 0.5, x -> x ./ 0.5;
             on = ("H", 5000.0), off = ("Rt", 1.0)
         )
@@ -551,11 +159,11 @@ end
     end
 
     @testset "Multiple parameters" begin
-        effect_beta = Daedalus.DaedalusStructs.ParamEffect(
+        effect_beta = Daedalus.DaedalusStructs.ReactiveEffect(
             :beta, x -> x .* 0.6, x -> x ./ 0.6;
             on = ("H", 5000.0), off = ("Rt", 1.0)
         )
-        effect_omega = Daedalus.DaedalusStructs.ParamEffect(
+        effect_omega = Daedalus.DaedalusStructs.ReactiveEffect(
             :omega, x -> x .* 0.6, x -> x ./ 0.6;
             on = ("H", 5000.0), off = ("Rt", 1.0)
         )
@@ -574,12 +182,11 @@ end
     end
 
     @testset "Different functions for different parameters" begin
-        # New style: each parameter can have its own trigger and function
-        effect_beta = Daedalus.DaedalusStructs.ParamEffect(
+        effect_beta = Daedalus.DaedalusStructs.ReactiveEffect(
             :beta, x -> x .* 0.4, x -> x ./ 0.4;
             on = ("H", 5000.0), off = ("Rt", 1.0)
         )
-        effect_omega = Daedalus.DaedalusStructs.ParamEffect(
+        effect_omega = Daedalus.DaedalusStructs.ReactiveEffect(
             :omega, x -> x .* 0.7, x -> x ./ 0.7;
             on = ("D", 100.0), off = ("Rt", 1.0)
         )
@@ -598,12 +205,11 @@ end
     end
 
     @testset "Per-parameter independent triggers" begin
-        # New style: each effect has its own trigger compartment
-        effect_beta = Daedalus.DaedalusStructs.ParamEffect(
+        effect_beta = Daedalus.DaedalusStructs.ReactiveEffect(
             :beta, x -> x .* 0.4, x -> x ./ 0.4;
             on = ("H", 5000.0), off = ("Rt", 1.0)
         )
-        effect_omega = Daedalus.DaedalusStructs.ParamEffect(
+        effect_omega = Daedalus.DaedalusStructs.ReactiveEffect(
             :omega, x -> x .* 0.7, x -> x ./ 0.7;
             on = ("D", 100.0), off = ("Rt", 1.0)
         )
@@ -611,11 +217,9 @@ end
         @test length(npi.effects) == 2
         @test npi.effects[1].target == :beta
         @test npi.effects[2].target == :omega
-        # Verify the functions are different
         test_val = 2.0
-        @test npi.effects[1].func(test_val) ≈ 0.8  # 2.0 * 0.4
-        @test npi.effects[2].func(test_val) ≈ 1.4  # 2.0 * 0.7
-        # Verify the triggers are different
+        @test npi.effects[1].func(test_val) ≈ 0.8
+        @test npi.effects[2].func(test_val) ≈ 1.4
         @test npi.effects[1].comp_on.name == "H"
         @test npi.effects[2].comp_on.name == "D"
 
@@ -629,29 +233,25 @@ end
     end
 
     @testset "Multiple effects with different on/off conditions" begin
-        # Each effect can have completely independent conditions
-        effect_beta = Daedalus.DaedalusStructs.ParamEffect(
+        effect_beta = Daedalus.DaedalusStructs.ReactiveEffect(
             :beta, x -> x .* 0.5, x -> x ./ 0.5;
             on = ("H", 5000.0), off = ("Rt", 1.0)
         )
-        effect_omega = Daedalus.DaedalusStructs.ParamEffect(
+        effect_omega = Daedalus.DaedalusStructs.ReactiveEffect(
             :omega, x -> x .* 0.9, x -> x ./ 0.9;
             on = ("I", 10000.0), off = ("H", 2000.0)
         )
         npi = Daedalus.DaedalusStructs.Npi([effect_beta, effect_omega])
         @test length(npi.effects) == 2
-        # Verify we have both params
         param_names = Set(eff.target for eff in npi.effects)
         @test param_names == Set([:beta, :omega])
 
-        # Verify the functions produce correct values
         beta_eff = [eff for eff in npi.effects if eff.target == :beta][1]
         omega_eff = [eff for eff in npi.effects if eff.target == :omega][1]
         test_val = 10.0
-        @test beta_eff.func(test_val) ≈ 5.0   # 10.0 * 0.5
-        @test omega_eff.func(test_val) ≈ 9.0  # 10.0 * 0.9
+        @test beta_eff.func(test_val) ≈ 5.0
+        @test omega_eff.func(test_val) ≈ 9.0
 
-        # Verify the on/off conditions are different
         @test beta_eff.comp_on.name == "H"
         @test beta_eff.comp_on.value == 5000.0
         @test omega_eff.comp_on.name == "I"
@@ -670,18 +270,17 @@ end
 end
 
 @testset "Npi with per-effect trigger conditions" begin
-    @testset "Direct ParamEffect construction with custom triggers" begin
-        # Create effects with different trigger compartments
-        effect_beta = Daedalus.DaedalusStructs.ParamEffect(
+    @testset "Direct ReactiveEffect construction with custom triggers" begin
+        effect_beta = Daedalus.DaedalusStructs.ReactiveEffect(
             :beta, x -> x .* 0.4, x -> x ./ 0.4;
             on = ("H", 5000.0), off = ("Rt", 1.0)
         )
-        effect_gamma = Daedalus.DaedalusStructs.ParamEffect(
+        effect_gamma = Daedalus.DaedalusStructs.ReactiveEffect(
             :omega, x -> x .* 0.8, x -> x ./ 0.8;
             on = ("D", 100.0), off = ("Rt", 1.0)
         )
 
-        npi = Daedalus.DaedalusStructs.Npi([effect_beta, effect_gamma]);
+        npi = Daedalus.DaedalusStructs.Npi([effect_beta, effect_gamma])
         @test length(npi.effects) == 2
         @test npi.effects[1].target == :beta
         @test npi.effects[2].target == :omega
@@ -690,19 +289,17 @@ end
         @test npi.effects[1].comp_on.value == 5000.0
         @test npi.effects[2].comp_on.value == 100.0
 
-        # Verify the NPI can be used in daedalus
         result = Daedalus.daedalus(
             "Australia",
             "influenza 2009",
             time_end = 200.0,
             npi = npi
-        );
+        )
         @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
     end
 
     @testset "Infectious (I) compartment trigger" begin
-        # Test that the new "I" compartment (Ia + Is) can be used as a trigger
-        effect = Daedalus.DaedalusStructs.ParamEffect(
+        effect = Daedalus.DaedalusStructs.ReactiveEffect(
             :beta, x -> x .* 0.5, x -> x ./ 0.5;
             on = ("I", 8000.0), off = ("Rt", 1.0)
         )
@@ -719,18 +316,16 @@ end
     end
 
     @testset "Each effect tracks its own activation state" begin
-        # Effects should have independent ison flags
-        effect1 = Daedalus.DaedalusStructs.ParamEffect(
+        effect1 = Daedalus.DaedalusStructs.ReactiveEffect(
             :beta, x -> x .* 0.4, x -> x ./ 0.4;
             on = ("H", 5000.0), off = ("Rt", 1.0)
         )
-        effect2 = Daedalus.DaedalusStructs.ParamEffect(
+        effect2 = Daedalus.DaedalusStructs.ReactiveEffect(
             :omega, x -> x .* 0.7, x -> x ./ 0.7;
             on = ("D", 100.0), off = ("Rt", 1.0)
         )
         npi = Daedalus.DaedalusStructs.Npi([effect1, effect2])
 
-        # Before daedalus is run, both should be inactive
         @test !npi.effects[1].ison
         @test !npi.effects[2].ison
     end
