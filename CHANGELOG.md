@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed (Breaking)
 - Added struct `ParamEffect` to define NPI target parameter and launch and end triggers
+  - New constructor: `ParamEffect(target, func, reset_func; on=(...), off=(...))`
+  - `func`: Transformation function applied when effect is active (e.g., `x -> x .* 0.4` for 60% reduction)
+  - `reset_func`: Inverse function to restore parameter when effect deactivates (e.g., `x -> x ./ 0.4`)
+  - Example: `ParamEffect(:beta, x -> x .* 0.4, x -> x ./ 0.4; on=("H", 5000.0), off=("Rt", 1.0))`
 - Struct `Npi` simplified to a container of `Vector{ParamEffect}`
   - Removed fields: `params` (NpiData), `saved_values`, `ison` — all now per-effect
   - New primary constructor: `Npi(effects::Vector{ParamEffect})` for custom per-effect triggers

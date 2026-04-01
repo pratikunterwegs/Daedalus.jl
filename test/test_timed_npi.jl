@@ -413,7 +413,7 @@ end
 @testset "TimedNpi vs reactive Npi coexistence" begin
     @testset "Model accepts reactive Npi (unchanged behavior)" begin
         effect = Daedalus.DaedalusStructs.ParamEffect(
-            :beta, original -> original .* 0.4;
+            :beta, x -> x .* 0.4, x -> x ./ 0.4;
             on = ("H", 5000.0), off = ("Rt", 1.0)
         )
         npi = Daedalus.DaedalusStructs.Npi([effect])
@@ -534,12 +534,12 @@ end
 @testset "Npi with flexible parameter effects" begin
     @testset "Single parameter (new style with ParamEffect)" begin
         effect = Daedalus.DaedalusStructs.ParamEffect(
-            :beta, x -> x .* 0.5;
+            :beta, x -> x .* 0.5, x -> x ./ 0.5;
             on = ("H", 5000.0), off = ("Rt", 1.0)
         )
         npi = Daedalus.DaedalusStructs.Npi([effect])
         @test length(npi.effects) == 1
-        @test npi.effects[1].name == :beta
+        @test npi.effects[1].target == :beta
 
         result = Daedalus.daedalus(
             "Australia",
@@ -552,17 +552,17 @@ end
 
     @testset "Multiple parameters" begin
         effect_beta = Daedalus.DaedalusStructs.ParamEffect(
-            :beta, x -> x .* 0.6;
+            :beta, x -> x .* 0.6, x -> x ./ 0.6;
             on = ("H", 5000.0), off = ("Rt", 1.0)
         )
         effect_omega = Daedalus.DaedalusStructs.ParamEffect(
-            :omega, x -> x .* 0.6;
+            :omega, x -> x .* 0.6, x -> x ./ 0.6;
             on = ("H", 5000.0), off = ("Rt", 1.0)
         )
         npi = Daedalus.DaedalusStructs.Npi([effect_beta, effect_omega])
         @test length(npi.effects) == 2
-        @test npi.effects[1].name == :beta
-        @test npi.effects[2].name == :omega
+        @test npi.effects[1].target == :beta
+        @test npi.effects[2].target == :omega
 
         result = Daedalus.daedalus(
             "Australia",
@@ -576,17 +576,17 @@ end
     @testset "Different functions for different parameters" begin
         # New style: each parameter can have its own trigger and function
         effect_beta = Daedalus.DaedalusStructs.ParamEffect(
-            :beta, x -> x .* 0.4;
+            :beta, x -> x .* 0.4, x -> x ./ 0.4;
             on = ("H", 5000.0), off = ("Rt", 1.0)
         )
         effect_omega = Daedalus.DaedalusStructs.ParamEffect(
-            :omega, x -> x .* 0.7;
+            :omega, x -> x .* 0.7, x -> x ./ 0.7;
             on = ("D", 100.0), off = ("Rt", 1.0)
         )
         npi = Daedalus.DaedalusStructs.Npi([effect_beta, effect_omega])
         @test length(npi.effects) == 2
-        @test npi.effects[1].name == :beta
-        @test npi.effects[2].name == :omega
+        @test npi.effects[1].target == :beta
+        @test npi.effects[2].target == :omega
 
         result = Daedalus.daedalus(
             "Australia",
@@ -600,17 +600,17 @@ end
     @testset "Per-parameter independent triggers" begin
         # New style: each effect has its own trigger compartment
         effect_beta = Daedalus.DaedalusStructs.ParamEffect(
-            :beta, x -> x .* 0.4;
+            :beta, x -> x .* 0.4, x -> x ./ 0.4;
             on = ("H", 5000.0), off = ("Rt", 1.0)
         )
         effect_omega = Daedalus.DaedalusStructs.ParamEffect(
-            :omega, x -> x .* 0.7;
+            :omega, x -> x .* 0.7, x -> x ./ 0.7;
             on = ("D", 100.0), off = ("Rt", 1.0)
         )
         npi = Daedalus.DaedalusStructs.Npi([effect_beta, effect_omega])
         @test length(npi.effects) == 2
-        @test npi.effects[1].name == :beta
-        @test npi.effects[2].name == :omega
+        @test npi.effects[1].target == :beta
+        @test npi.effects[2].target == :omega
         # Verify the functions are different
         test_val = 2.0
         @test npi.effects[1].func(test_val) ≈ 0.8  # 2.0 * 0.4
@@ -631,22 +631,22 @@ end
     @testset "Multiple effects with different on/off conditions" begin
         # Each effect can have completely independent conditions
         effect_beta = Daedalus.DaedalusStructs.ParamEffect(
-            :beta, x -> x .* 0.5;
+            :beta, x -> x .* 0.5, x -> x ./ 0.5;
             on = ("H", 5000.0), off = ("Rt", 1.0)
         )
         effect_omega = Daedalus.DaedalusStructs.ParamEffect(
-            :omega, x -> x .* 0.9;
+            :omega, x -> x .* 0.9, x -> x ./ 0.9;
             on = ("I", 10000.0), off = ("H", 2000.0)
         )
         npi = Daedalus.DaedalusStructs.Npi([effect_beta, effect_omega])
         @test length(npi.effects) == 2
         # Verify we have both params
-        param_names = Set(eff.name for eff in npi.effects)
+        param_names = Set(eff.target for eff in npi.effects)
         @test param_names == Set([:beta, :omega])
 
         # Verify the functions produce correct values
-        beta_eff = [eff for eff in npi.effects if eff.name == :beta][1]
-        omega_eff = [eff for eff in npi.effects if eff.name == :omega][1]
+        beta_eff = [eff for eff in npi.effects if eff.target == :beta][1]
+        omega_eff = [eff for eff in npi.effects if eff.target == :omega][1]
         test_val = 10.0
         @test beta_eff.func(test_val) ≈ 5.0   # 10.0 * 0.5
         @test omega_eff.func(test_val) ≈ 9.0  # 10.0 * 0.9
@@ -673,18 +673,18 @@ end
     @testset "Direct ParamEffect construction with custom triggers" begin
         # Create effects with different trigger compartments
         effect_beta = Daedalus.DaedalusStructs.ParamEffect(
-            :beta, x -> x .* 0.4;
+            :beta, x -> x .* 0.4, x -> x ./ 0.4;
             on = ("H", 5000.0), off = ("Rt", 1.0)
         )
         effect_gamma = Daedalus.DaedalusStructs.ParamEffect(
-            :omega, x -> x .* 0.8;
+            :omega, x -> x .* 0.8, x -> x ./ 0.8;
             on = ("D", 100.0), off = ("Rt", 1.0)
         )
 
         npi = Daedalus.DaedalusStructs.Npi([effect_beta, effect_gamma]);
         @test length(npi.effects) == 2
-        @test npi.effects[1].name == :beta
-        @test npi.effects[2].name == :omega
+        @test npi.effects[1].target == :beta
+        @test npi.effects[2].target == :omega
         @test npi.effects[1].comp_on.name == "H"
         @test npi.effects[2].comp_on.name == "D"
         @test npi.effects[1].comp_on.value == 5000.0
@@ -703,7 +703,7 @@ end
     @testset "Infectious (I) compartment trigger" begin
         # Test that the new "I" compartment (Ia + Is) can be used as a trigger
         effect = Daedalus.DaedalusStructs.ParamEffect(
-            :beta, x -> x .* 0.5;
+            :beta, x -> x .* 0.5, x -> x ./ 0.5;
             on = ("I", 8000.0), off = ("Rt", 1.0)
         )
         npi = Daedalus.DaedalusStructs.Npi([effect])
@@ -721,11 +721,11 @@ end
     @testset "Each effect tracks its own activation state" begin
         # Effects should have independent ison flags
         effect1 = Daedalus.DaedalusStructs.ParamEffect(
-            :beta, x -> x .* 0.4;
+            :beta, x -> x .* 0.4, x -> x ./ 0.4;
             on = ("H", 5000.0), off = ("Rt", 1.0)
         )
         effect2 = Daedalus.DaedalusStructs.ParamEffect(
-            :omega, x -> x .* 0.7;
+            :omega, x -> x .* 0.7, x -> x ./ 0.7;
             on = ("D", 100.0), off = ("Rt", 1.0)
         )
         npi = Daedalus.DaedalusStructs.Npi([effect1, effect2])

@@ -9,61 +9,8 @@ using DiffEqCallbacks: SavedValues, SavingCallback, PresetTimeCallback
 using LinearAlgebra: eigen, norm
 using OrdinaryDiffEq
 
-export make_state_condition,
-       make_events, make_param_changer, make_param_reset,
+export make_events, make_param_changer, make_param_reset,
        make_save_events, make_rt_logger, make_timed_npi_callbacks, get_coef
-
-"""
-    make_state_condition(threshold, idx, comparison)::Function
-
-Factory function that creates a condition function for event callbacks.
-
-Returns a function that checks whether a state sum crosses a threshold at the
-specified indices. Used to trigger events when compartment totals reach certain values.
-
-# Arguments
-- `threshold::Float64`: The threshold value for comparison
-- `idx`: Indices into the state vector to sum
-- `comparison::Function`: Comparison function (e.g., `<`, `>`)
-
-# Returns
-A `Function` that takes `(u, t, integrator)` and returns 0.0 if condition is met, 1.0 otherwise
-"""
-function make_state_condition(threshold, idx, comparison::Function)::Function
-    function fn_cond(u, t, integrator)
-        state_sum = 0.0
-
-        X = @view u[idx]
-        state_sum = sum(X)
-
-        return comparison(state_sum, threshold) ? 0.0 : 1.0
-    end
-
-    return fn_cond
-end
-
-"""
-    make_param_changer(param_name, func, coef)::Function
-
-Create a callback function that modifies a parameter during ODE integration.
-
-Generates an effect function that applies `func` to the current parameter value
-multiplied by `coef`, storing the result in `param_name_now`.
-
-# Arguments
-- `param_name::String`: Name of the parameter to modify (e.g., `"beta"`)
-- `func::Function`: Function to apply (e.g., `.*` for multiplication)
-- `coef`: Coefficient to apply via `func`
-
-# Returns
-A `Function` that takes an `integrator` and modifies the parameter in-place
-"""
-function make_param_changer(param_name, func, coef)::Function
-    function effect!(integrator)
-        new_value = func(getproperty(integrator.p, Symbol(param_name)), coef)
-        setproperty!(integrator.p, Symbol(param_name * "_now"), new_value)
-    end
-end
 
 """
     make_param_changer(npi::Npi)::Function
@@ -79,34 +26,27 @@ applies all modifications at once.
 # Returns
 A `Function` that takes an `integrator` and modifies all affected parameters in-place
 """
-function make_param_changer(npi::Npi)::Function
+function make_param_changer(eff::ParamEffect)::Function
     function effect!(integrator)
-        for eff in npi.effects
-            original = getproperty(integrator.p, eff.name)
-            new_val = eff.func(original)
-            param_now = Symbol(String(eff.name) * "_now")
-            setproperty!(integrator.p, param_now, new_val)
+        if length(eff.saved_values.saveval) > 0
+            value_on = eff.comp_on.value
+            u = eff.saved_values.saveval[end][1] # index 1 for comp_on
+
+            if u > value_on && !eff.ison
+                eff.ison = true
+                original = getproperty(integrator.p, eff.target)
+                new_val = eff.func(original)
+                # TODO: remove
+                # time = integrator.t
+                # println("t = $time Current value $(eff.target) = $original")
+                # println("Setting value $(eff.target) = $new_val")
+                setproperty!(integrator.p, eff.target, new_val)
+            end
+        else
+            nothing
         end
     end
     return effect!
-end
-
-"""
-    make_param_reset(param_name)::Function
-
-Create a callback function that resets a parameter to its original value.
-
-# Arguments
-- `param_name::String`: Name of the parameter to reset (e.g., `"beta"`)
-
-# Returns
-A `Function` that takes an `integrator` and resets `param_name_now` to the original `param_name`
-"""
-function make_param_reset(param_name)::Function
-    function effect!(integrator)
-        original_value = getproperty(integrator.p, Symbol(param_name))
-        setproperty!(integrator.p, Symbol(param_name * "_now"), original_value)
-    end
 end
 
 """
@@ -123,12 +63,20 @@ resets all of them to their original values.
 # Returns
 A `Function` that takes an `integrator` and resets all affected parameters in-place
 """
-function make_param_reset(npi::Npi)::Function
+function make_param_reset(eff::ParamEffect)::Function
     function effect!(integrator)
-        for eff in npi.effects
-            original = getproperty(integrator.p, eff.name)
-            param_now = Symbol(String(eff.name) * "_now")
-            setproperty!(integrator.p, param_now, original)
+        if length(eff.saved_values.saveval) > 0
+            value_off = eff.comp_off.value
+            u = eff.saved_values.saveval[end][2] # index 2 for comp_off
+
+            if u < value_off && eff.ison
+                eff.ison = false
+                current = getproperty(integrator.p, eff.target)
+                reset_val = eff.reset_func(current)
+                setproperty!(integrator.p, eff.target, reset_val)
+            end
+        else
+            nothing
         end
     end
     return effect!
@@ -157,8 +105,8 @@ function make_save_events(npi::Npi, savepoints)
 
         savingcb = SavingCallback(
             (u, t, integrator) -> begin
-                sum_on = sum(u[idx_on])
-                sum_off = sum(u[idx_off])
+                sum_on = sum(@view u[idx_on])
+                sum_off = sum(@view u[idx_off])
                 return (sum_on, sum_off)
             end,
             eff.saved_values, saveat = savepoints
@@ -184,54 +132,21 @@ trigger independently based on that effect's own trigger conditions.
 A `CallbackSet` with all on/off callbacks for all effects
 """
 function make_events(npi::Npi, savepoints)::CallbackSet
-    callbacks = []
+    cbset = CallbackSet()
 
     for eff in npi.effects
-        value_on = eff.comp_on.value
-        value_off = eff.comp_off.value
-        param_now_sym = Symbol(String(eff.name) * "_now")
-
-        # Activation callback
-        function affect_on!(integrator)
-            if length(eff.saved_values.saveval) < 2
-                return nothing
-            end
-
-            u = eff.saved_values.saveval[end][1]      # latest sum_on
-            _u = eff.saved_values.saveval[end - 1][1] # previous sum_on
-            growing = u > _u
-
-            if u > value_on && growing && !eff.ison
-                eff.ison = true
-                original = getproperty(integrator.p, eff.name)
-                new_val = eff.func(original)
-                setproperty!(integrator.p, param_now_sym, new_val)
-            end
-        end
-
+        # make PSTCb for effect.on for this effect
+        affect_on!::Function = make_param_changer(eff)
         cb_on = PresetTimeCallback(savepoints, affect_on!)
-        push!(callbacks, cb_on)
+        cbset = CallbackSet(cbset, cb_on)
 
-        # Deactivation callback
-        function affect_off!(integrator)
-            if length(eff.saved_values.saveval) == 0
-                return nothing
-            end
-
-            u = eff.saved_values.saveval[end][2]  # latest sum_off
-
-            if u < value_off && eff.ison
-                eff.ison = false
-                original = getproperty(integrator.p, eff.name)
-                setproperty!(integrator.p, param_now_sym, original)
-            end
-        end
-
+        # make PSTCb for effect.off for this effect
+        affect_off!::Function = make_param_reset(eff)
         cb_off = PresetTimeCallback(savepoints, affect_off!)
-        push!(callbacks, cb_off)
+        cbset = CallbackSet(cbset, cb_off)
     end
 
-    return CallbackSet(callbacks...)
+    return cbset
 end
 
 """

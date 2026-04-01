@@ -203,7 +203,7 @@ end
     @testset "Rt with NPI intervention" begin
         # Create a simple NPI for testing (new style with ParamEffect)
         effect = Daedalus.DaedalusStructs.ParamEffect(
-            :beta, original -> original .* 0.7;
+            :beta, x -> x .* 0.7, x -> x ./ 0.7;
             on = ("H", 20000.0), off = ("Rt", 1.0)
         )
         npi = Daedalus.DaedalusStructs.Npi([effect])
