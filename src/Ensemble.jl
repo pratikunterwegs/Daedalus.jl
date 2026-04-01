@@ -28,7 +28,7 @@ A `Vector{NamedTuple}` where each element contains:
 """
 function daedalus(country::Union{String, DataLoader.CountryData},
         infections::Vector{DataLoader.InfectionData};
-        npi::Union{Npi, TimedNpi, Nothing} = nothing,
+        npi::Union{Npi, Nothing} = nothing,
         log_rt::Bool = true,
         time_end::Float64 = 100.0,
         increment::Float64 = 1.0,
@@ -90,14 +90,6 @@ function daedalus(country::Union{String, DataLoader.CountryData},
             rt_logger = make_rt_logger(savepoints)
             cb_set = CallbackSet(rt_logger)
         end
-    elseif isa(npi, TimedNpi)
-        timed_callbacks = make_timed_npi_callbacks(npi)
-        if log_rt
-            rt_logger = make_rt_logger(savepoints)
-            cb_set = CallbackSet(timed_callbacks, rt_logger)
-        else
-            cb_set = timed_callbacks
-        end
     elseif isa(npi, Npi)
         save_events = make_save_events(npi, savepoints)
         events = make_events(npi, savepoints)
@@ -119,7 +111,7 @@ function daedalus(country::Union{String, DataLoader.CountryData},
         saved_vals = if isnothing(npi)
             nothing
         elseif isa(npi, Npi)
-            [eff.saved_values for eff in npi.effects]
+            [eff.saved_values for eff in npi.effects if isa(eff, ReactiveEffect)]
         else
             nothing
         end
