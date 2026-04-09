@@ -10,6 +10,9 @@ using Test
     # Include eigenvalue tests
     include("test_eigenvalue.jl")
 
+    # Include trigger and effect tests
+    include("test_triggers_effects.jl")
+
     # Include time-limited NPI tests
     include("test_timed_npi.jl")
 
