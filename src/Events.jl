@@ -13,27 +13,29 @@ export make_events, make_param_changer, make_param_reset,
        make_save_events, make_rt_logger, get_coef
 
 """
-    make_param_changer(eff::ParamEffect)::Function
+    make_param_changer(eff::Effect)::Function
 
 Create a callback function that modifies a parameter based on reactive state conditions.
 
 # Arguments
-- `eff::ParamEffect`: A ParamEffect with state-dependent trigger conditions
+- `eff::Effect`: A Effect with state-dependent trigger conditions
 
 # Returns
 A `Function` that takes an `integrator` and modifies the target parameter in-place
 """
-function make_param_changer(eff::ParamEffect)::Function
-    function effect!(integrator)
-        # special case for time-dependent NPIs
-        if eff.comp_on.name == "time"
+function make_param_changer(eff::Effect)::Function
+    effect! = function () end
+    if isa(eff.trigger_on, TimeTrigger)
+        effect! = function (integrator)
             original = getproperty(integrator.p, eff.target)
             new_val = eff.func(original)
             setproperty!(integrator.p, eff.target, new_val)
-        else
-            # all other triggers
+        end
+        return effect!
+    else
+        effect! = function (integrator)
             if length(eff.saved_values.saveval) > 0
-                value_on = eff.comp_on.value
+                value_on = eff.trigger_on.value
                 u = eff.saved_values.saveval[end][1] # index 1 for comp_on
                 if u > value_on && !eff.ison
                     eff.ison = true
@@ -45,51 +47,37 @@ function make_param_changer(eff::ParamEffect)::Function
                 nothing
             end
         end
-    return effect!
+        return effect!
+    end
 end
 
-# """
-#     make_param_changer(eff::TimedEffect)::Function
-
-# Create a callback function that modifies a parameter for a timed effect.
-
-# # Arguments
-# - `eff::TimedEffect`: A TimedEffect with fixed start/end times
-
-# # Returns
-# A `Function` that takes an `integrator` and modifies the target parameter in-place
-# """
-# function make_param_changer(eff::TimedEffect)::Function
-#     function effect!(integrator)
-#         original = getproperty(integrator.p, eff.target)
-#         new_val = eff.func(original)
-#         setproperty!(integrator.p, eff.target, new_val)
-#     end
-#     return effect!
-# end
-
 """
-    make_param_reset(eff::ReactiveEffect)::Function
+    make_param_reset(eff::Effect)::Function
 
 Create a callback function that resets a parameter based on reactive state conditions.
 
 # Arguments
-- `eff::ReactiveEffect`: A ReactiveEffect with state-dependent trigger conditions
+- `eff::Effect`: A Effect with state-dependent trigger conditions
 
 # Returns
 A `Function` that takes an `integrator` and resets the target parameter in-place
 """
-function make_param_reset(eff::ParamEffect)::Function
-    function effect!(integrator)
-        if eff.comp_off.name == "time"
+function make_param_reset(eff::Effect)::Function
+    effect! = function () end
+    if isa(eff.trigger_on, TimeTrigger)
+        effect! = function (integrator)
             current = getproperty(integrator.p, eff.target)
             reset_val = eff.reset_func(current)
             setproperty!(integrator.p, eff.target, reset_val)
-        else 
+        end
+
+        return effect!
+    else
+        effect! = function (integrator)
             if length(eff.saved_values.saveval) > 0
-                value_off = eff.comp_off.value
-                u = eff.saved_values.saveval[end][2] # index 2 for comp_off
-    
+                value_off = eff.trigger_off.value
+                u = eff.saved_values.saveval[end][2] # index 2 for trigger_off
+
                 if u < value_off && eff.ison
                     eff.ison = false
                     current = getproperty(integrator.p, eff.target)
@@ -100,60 +88,44 @@ function make_param_reset(eff::ParamEffect)::Function
                 nothing
             end
         end
+
+        return effect!
     end
-    return effect!
 end
 
-# """
-#     make_param_reset(eff::TimedEffect)::Function
-
-# Create a callback function that resets a parameter for a timed effect.
-
-# # Arguments
-# - `eff::TimedEffect`: A TimedEffect with fixed start/end times
-
-# # Returns
-# A `Function` that takes an `integrator` and resets the target parameter in-place
-# """
-# function make_param_reset(eff::TimedEffect)::Function
-#     function effect!(integrator)
-#         current = getproperty(integrator.p, eff.target)
-#         reset_val = eff.reset_func(current)
-#         setproperty!(integrator.p, eff.target, reset_val)
-#     end
-#     return effect!
-# end
-
 """
-    make_save_events(npi::Npi, savepoints)
+    make_save_events(eff::ParamEffect, savepoints)::Union{SavingCallback, Nothing}
 
-Create SavingCallbacks that record compartment values at specified timepoints.
+Create a SavingCallback for a single ParamEffect that records trigger compartment values.
 
-Returns a vector of `SavingCallback`s, one per reactive effect. Each callback captures the
-values of that effect's on/off trigger compartments at each savepoint. TimedEffect
-entries are skipped (they do not require state-based saving).
+Skips timed effects (returns nothing). For reactive effects, creates a callback that captures
+the values of the on/off trigger compartments at each savepoint.
 
 # Arguments
-- `npi::Npi`: Npi struct with a vector of effect specifications (both ReactiveEffect and TimedEffect)
+- `eff::ParamEffect`: An effect with trigger conditions
 - `savepoints`: Time points at which to save state values
 
 # Returns
-A `Vector{SavingCallback}` — one callback per ReactiveEffect, each writing to `eff.saved_values`
+A `SavingCallback` for reactive effects, or `nothing` for timed effects
 """
-function make_save_events(npi::Npi, savepoints)
-    cbset = CallbackSet()
-    for eff in npi.effects
-        # handle comp on
-        if isa(eff.trigger_on, TimeTrigger) && isa(eff.trigger_off, TimeTrigger)
-            continue
-        elseif isa(eff.trigger_on, ReactiveTrigger)
-            idx_on = Constants.get_indices(eff.comp_on.name)
-        end
-        # handle comp off
-        isa(eff, ReactiveEffect) || continue
-        
-        idx_off = Constants.get_indices(eff.comp_off.name)
-
+function make_save_events(eff::ParamEffect, savepoints)
+    # Skip if both triggers are time-based (this is a timed effect)
+    if isa(eff.trigger_on, TimeTrigger) && isa(eff.trigger_off, TimeTrigger)
+        return nothing
+    elseif isa(eff.trigger_on, TimeTrigger)
+        idx_off = Constants.get_indices(eff.trigger_off.name)
+        savingcb = SavingCallback(
+            (u, t, integrator) -> begin
+                sum_off = sum(@view u[idx_off])
+                return (t, sum_off)
+            end,
+            eff.saved_values, saveat = savepoints
+        )
+        return savingcb
+    else
+        # both are reactive
+        idx_on = Constants.get_indices(eff.trigger_on.name)
+        idx_off = Constants.get_indices(eff.trigger_off.name)
         savingcb = SavingCallback(
             (u, t, integrator) -> begin
                 sum_on = sum(@view u[idx_on])
@@ -162,9 +134,48 @@ function make_save_events(npi::Npi, savepoints)
             end,
             eff.saved_values, saveat = savepoints
         )
-        push!(callbacks, savingcb)
+        return savingcb
     end
-    return callbacks
+end
+
+"""
+    make_save_events(npi::Npi, savepoints)
+
+Create SavingCallbacks that record compartment values at specified timepoints.
+
+Returns a vector of `SavingCallback`s, one per reactive effect. Each callback captures the
+values of that effect's on/off trigger compartments at each savepoint. Timed effects
+are skipped (they do not require state-based saving).
+
+# Arguments
+- `npi::Npi`: Npi struct with a vector of effect specifications (both reactive and timed)
+- `savepoints`: Time points at which to save state values
+
+# Returns
+A `Vector{SavingCallback}` — one callback per reactive effect, each writing to `eff.saved_values`
+"""
+function make_save_events(npi::Npi, savepoints)
+    cbset = []
+    for eff in npi.effects
+        cb = make_save_events(eff, savepoints)
+        if !isnothing(cb)
+            push!(cbset, cb)
+        end
+    end
+    return cbset
+end
+
+function make_events(eff::ParamEffect, savepoints)::CallbackSet
+    affect_on! = make_param_changer(eff)
+    affect_off! = make_param_reset(eff)
+
+    tpoints_on = isa(eff.trigger_on, ReactiveTrigger) ? savepoints : eff.trigger_on.value
+    tpoints_off = isa(eff.trigger_off, ReactiveTrigger) ? savepoints : eff.trigger_off.value
+
+    cb_on = PresetTimeCallback(tpoints_on, affect_on!)
+    cb_off = PresetTimeCallback(tpoints_off, affect_off!)
+
+    return CallbackSet(cb_on, cb_off)
 end
 
 """
@@ -172,11 +183,8 @@ end
 
 Create a CallbackSet of event callbacks for an NPI containing both reactive and timed effects.
 
-For ReactiveEffect: generates paired callbacks (on/off) at savepoints, triggered by state.
-For TimedEffect: generates paired callbacks at the effect's start_time and end_time.
-
 # Arguments
-- `npi::Npi`: Npi struct with a vector of effect specifications (ReactiveEffect and/or TimedEffect)
+- `npi::Npi`: Npi struct with a vector of effect specifications
 - `savepoints`: Time points at which to check state for reactive effect triggers
 
 # Returns
@@ -186,20 +194,10 @@ function make_events(npi::Npi, savepoints)::CallbackSet
     cbset = CallbackSet()
 
     for eff in npi.effects
-        affect_on! = make_param_changer(eff)
-        affect_off! = make_param_reset(eff)
+        cbset_eff = make_events(eff, savepoints)
 
-        if isa(eff, ReactiveEffect)
-            # Reactive effects: trigger at savepoints based on state
-            cb_on = PresetTimeCallback(savepoints, affect_on!)
-            cb_off = PresetTimeCallback(savepoints, affect_off!)
-        else  # TimedEffect
-            # Timed effects: trigger at fixed times
-            cb_on = PresetTimeCallback(eff.start_time, affect_on!)
-            cb_off = PresetTimeCallback(eff.end_time, affect_off!)
-        end
-
-        cbset = CallbackSet(cbset, cb_on, cb_off)
+        # cbset grown flexibly
+        cbset = CallbackSet(cbset, cbset_eff)
     end
 
     return cbset
@@ -248,6 +246,5 @@ function make_rt_logger(savepoints)
 
     return pstcb_rt
 end
-
 
 end

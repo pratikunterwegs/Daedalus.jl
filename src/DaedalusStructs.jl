@@ -5,8 +5,7 @@ using ..Constants
 
 using DiffEqCallbacks
 
-export Params, Npi, ReactiveEffect, TimedEffect, StateData, CtStateData, DsStateData,
-       get_indices
+export Params, Npi, Effect, ParamEffect, Trigger, ReactiveTrigger, TimeTrigger
 
 """
     Params
@@ -49,7 +48,7 @@ struct ReactiveTrigger <: Trigger
     name::String
     value::Float64
 
-    function ReactiveTrigger(name, value)
+    function ReactiveTrigger(value, name)
         return new(name, value)
     end
 end
@@ -58,49 +57,13 @@ struct TimeTrigger <: Trigger
     name::String
     value::Float64
 
-    function TimeTrigger(name = "time", value)
+    function TimeTrigger(value, name = "time")
         return new(name, value)
     end
 end
 
 """
-    ReactiveEffect
-
-A mutable struct specifying how an NPI modifies a single ODE parameter in response to
-epidemic state (reactive/state-dependent). Each effect has independent trigger conditions
-for activation and deactivation.
-
-# Fields
-- `target::Symbol`: The parameter to modify (e.g., `:beta`, `:omega`)
-- `func::Function`: A function mapping the original parameter value to the modified value
-- `reset_func::Function`: A function mapping the modified parameter value to the
-    original value. This is needed when multiple effects overlap, so as to be
-    able to return `target` to its pre-modification value.
-- `trigger_on::StateData`: Trigger condition to activate this effect
-- `trigger_off::StateData`: Trigger condition to deactivate this effect
-- `saved_values::SavedValues`: Historical state values for tracking this effect's triggers
-- `is_on::Bool`: Current activation status for this effect
-
-# Constructors
-
-## Full constructor (with StateData objects)
-```julia
-ReactiveEffect(target::Symbol, func::Function, trigger_on::StateData, trigger_off::StateData)
-```
-
-## Keyword convenience constructor
-```julia
-ReactiveEffect(target::Symbol, func::Function, reset_func::Function; on::Tuple{String, Float64}, off::Tuple{String, Float64})
-```
-
-Example:
-```julia
-# Reduce beta by 60% when H > 5000, restore when Rt < 1.0
-ReactiveEffect(:beta, x -> x .* 0.4, x -> x ./ 0.4; on=("H", 5000.0), off=("Rt", 1.0))
-
-# Reduce gamma_Ia by 20% when D > 100, restore when I < 8000
-ReactiveEffect(:gamma_Ia, x -> x .* 0.8, x -> x ./ 0.8; on=("D", 100.0), off=("I", 8000.0))
-```
+    ParamEffect
 """
 mutable struct ParamEffect <: Effect
     target::Symbol
@@ -112,71 +75,13 @@ mutable struct ParamEffect <: Effect
     ison::Bool
 
     # Full constructor with StateData objects
-    function ReactiveEffect(target::Symbol, func::Function,
+    function ParamEffect(target::Symbol, func::Function,
             reset_func::Function,
-            trigger_on::StateData, trigger_off::StateData)
+            trigger_on::Trigger, trigger_off::Trigger)
         sv = SavedValues(Float64, Tuple{Float64, Float64})
         return new(target, func, reset_func, trigger_on, trigger_off, sv, false)
     end
 end
-
-# Keyword convenience constructor for ReactiveEffect
-function ReactiveEffect(target::Symbol, func::Function, reset_func::Function;
-        on::Tuple{String, Float64},
-        off::Tuple{String, Float64})
-    ReactiveEffect(target, func, reset_func,
-        ReactiveTrigger(on...), ReactiveTrigger(off...))
-end
-
-"""
-    get_indices(x::StateData)
-
-Get state vector indices for the compartment in a StateData struct.
-Delegates to `Constants.get_indices()`.
-"""
-function get_indices(x::StateData)
-    return Constants.get_indices(x.name)
-end
-
-# """
-#     TimedEffect
-
-# A mutable struct specifying how an NPI modifies a single ODE parameter at
-# specified time points (time-limited / timed intervention).
-
-# # Fields
-# - `target::Symbol`: The parameter to modify (e.g., `:beta`, `:omega`)
-# - `func::Function`: A function mapping the original parameter value to the modified value
-# - `reset_func::Function`: A function mapping the modified parameter value back to the original value
-# - `start_time::Float64`: Time (days) at which to activate the effect
-# - `end_time::Float64`: Time (days) at which to deactivate the effect
-
-# # Constructor
-# ```julia
-# TimedEffect(target::Symbol, func::Function, reset_func::Function, start_time::Float64, end_time::Float64)
-# ```
-
-# # Example
-# ```julia
-# # Reduce beta by 30% from day 10 to day 40
-# TimedEffect(:beta, x -> x .* 0.7, x -> x ./ 0.7, 10.0, 40.0)
-
-# # Increase omega by 20% from day 15 to day 50
-# TimedEffect(:omega, x -> x .* 1.2, x -> x ./ 1.2, 15.0, 50.0)
-# ```
-# """
-# mutable struct TimedEffect <: ParamEffect
-#     target::Symbol
-#     func::Function
-#     reset_func::Function
-#     start_time::Float64
-#     end_time::Float64
-
-#     function TimedEffect(target::Symbol, func::Function, reset_func::Function,
-#             start_time::Float64, end_time::Float64)
-#         return new(target, func, reset_func, start_time, end_time)
-#     end
-# end
 
 """
     Npi
@@ -186,8 +91,7 @@ of parameter effects (both reactive and timed), each specifying how to modify an
 and when to activate/deactivate.
 
 # Fields
-- `effects::Vector{ParamEffect}`: Parameter modifications to apply. May contain both
-  `ReactiveEffect` (state-dependent) and `TimedEffect` (time-limited) objects.
+- `effects::Vector{ParamEffect}`: Parameter modifications to apply.
 
 # Constructors
 
@@ -198,25 +102,6 @@ Npi(effects::AbstractVector{<:ParamEffect})
 
 # Examples
 
-```julia
-# Reactive effects: respond to epidemic state
-npi = Npi([
-    ReactiveEffect(:beta, x -> x .* 0.4, x -> x ./ 0.4; on=("H", 5000.0), off=("Rt", 1.0)),
-    ReactiveEffect(:gamma_Ia, x -> x .* 0.8, x -> x ./ 0.8; on=("D",  100.0), off=("Rt", 1.0)),
-])
-
-# Timed effects: activate at specified times
-npi = Npi([
-    TimedEffect(:beta, x -> x .* 0.7, x -> x ./ 0.7, 10.0, 40.0),
-    TimedEffect(:omega, x -> x .* 1.2, x -> x ./ 1.2, 15.0, 50.0),
-])
-
-# Mixed: both reactive and timed effects
-npi = Npi([
-    ReactiveEffect(:beta, x -> x .* 0.6, x -> x ./ 0.6; on=("H", 10000.0), off=("Rt", 1.0)),
-    TimedEffect(:omega, x -> x .* 1.1, x -> x ./ 1.1, 20.0, 60.0),
-])
-```
 """
 mutable struct Npi <: Event
     effects::Vector{Effect}
