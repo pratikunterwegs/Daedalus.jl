@@ -111,7 +111,7 @@ function daedalus(country::Union{String, DataLoader.CountryData},
         saved_vals = if isnothing(npi)
             nothing
         elseif isa(npi, Npi)
-            [eff.saved_values for eff in npi.effects if isa(eff, ReactiveEffect)]
+            [eff.saved_values for eff in npi.effects if isa(eff, ParamEffect)]
         else
             nothing
         end
