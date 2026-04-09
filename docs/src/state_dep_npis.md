@@ -29,13 +29,15 @@ For a compartmental epidemic model this equates to an event that is reactive to 
 using Daedalus
 using Plots
 
-# Create an effect: reduce beta by 20% when hospitalizations exceed 5000
+# Create an effect: reduce beta by 20% when hospitalizations exceed 20000
+trigger_on = Daedalus.DaedalusStructs.ReactiveTrigger(20000.0, "H")
+trigger_off = Daedalus.DaedalusStructs.ReactiveTrigger(10000.0, "H")
 effect = Daedalus.DaedalusStructs.ParamEffect(
     :beta,
-    x -> x .* 0.7,         # reduce by 20%
-    x -> x ./ 0.7;         # reset: divide by 0.8
-    on = ("H", 20000.0),    # Activate when H > 20000
-    off = ("H", 10000.0)      # Deactivate when H < 10000.0
+    x -> x .* 0.8,         # reduce by 20%
+    x -> x ./ 0.8,         # reset: divide by 0.8
+    trigger_on,             # Activate when H > 20000
+    trigger_off             # Deactivate when H < 10000
 )
 
 # Create NPI from the effect
@@ -77,21 +79,25 @@ using Daedalus
 using Plots
 
 # Create multiple effects with different triggers
+trigger_beta_on = Daedalus.DaedalusStructs.ReactiveTrigger(5000.0, "H")
+trigger_beta_off = Daedalus.DaedalusStructs.ReactiveTrigger(1.0, "Rt")
 effect_beta = Daedalus.DaedalusStructs.ParamEffect(
     :beta,
     x -> x .* 0.8,         # reduce by 20%
-    x -> x ./ 0.8;         # reset: divide by 0.8
-    on = ("H", 5000.0),    # Activate on hospitalizations
-    off = ("Rt", 1.0)
+    x -> x ./ 0.8,         # reset: divide by 0.8
+    trigger_beta_on,        # Activate on hospitalizations
+    trigger_beta_off        # Deactivate when Rt < 1.0
 )
 
 hosp_capacity = 20e3
+trigger_omega_on = Daedalus.DaedalusStructs.ReactiveTrigger(hosp_capacity, "H")
+trigger_omega_off = Daedalus.DaedalusStructs.ReactiveTrigger(hosp_capacity / 2.0, "H")
 effect_omega = Daedalus.DaedalusStructs.ParamEffect(
     :omega,
     x -> x .* 1.2,         # increase by 20%
-    x -> x ./ 1.2;         # reset: divide by 1.2
-    on = ("H", hosp_capacity),
-    off = ("H", hosp_capacity / 2.0)
+    x -> x ./ 1.2,         # reset: divide by 1.2
+    trigger_omega_on,       # Activate at high occupancy
+    trigger_omega_off       # Deactivate at medium occupancy
 )
 
 # Create NPI with both effects
