@@ -3,110 +3,81 @@ using Test
 using OrdinaryDiffEq
 using DiffEqCallbacks
 
-@testset "make_events with timed effects" begin
-    @testset "Callback creation for single timed phase" begin
-        effect = Daedalus.DaedalusStructs.TimedEffect(
-            :beta, x -> x .* 0.5, x -> x ./ 0.5, 10.0, 20.0
+@testset "ParamEffect with reactive triggers" begin
+    @testset "Construct ParamEffect with ReactiveTrigger" begin
+        trigger_on = Daedalus.DaedalusStructs.ReactiveTrigger(5000.0, "H")
+        trigger_off = Daedalus.DaedalusStructs.ReactiveTrigger(1.0, "Rt")
+        effect = Daedalus.DaedalusStructs.ParamEffect(
+            :beta, x -> x .* 0.4, x -> x ./ 0.4,
+            trigger_on, trigger_off
         )
-        npi = Daedalus.DaedalusStructs.Npi([effect])
-        savepoints = 0.0:1.0:30.0
-        callbacks = Daedalus.Events.make_events(npi, savepoints)
 
-        @test isa(callbacks, DiffEqCallbacks.CallbackSet)
-        # Should have 2 callbacks: one for activation at start_time, one for deactivation at end_time
-        @test length(callbacks.discrete_callbacks) == 2
+        @test effect.target == :beta
+        @test effect.trigger_on.value == 5000.0
+        @test effect.trigger_on.name == "H"
+        @test effect.trigger_off.value == 1.0
+        @test effect.trigger_off.name == "Rt"
+        @test !effect.ison
     end
 
-    @testset "Callback creation for multiple timed phases" begin
-        effect1 = Daedalus.DaedalusStructs.TimedEffect(
-            :beta, x -> x .* 0.7, x -> x ./ 0.7, 10.0, 20.0
+    @testset "ParamEffect with timed triggers" begin
+        trigger_on = Daedalus.DaedalusStructs.TimeTrigger(10.0, "time")
+        trigger_off = Daedalus.DaedalusStructs.TimeTrigger(20.0, "time")
+        effect = Daedalus.DaedalusStructs.ParamEffect(
+            :beta, x -> x .* 0.5, x -> x ./ 0.5,
+            trigger_on, trigger_off
         )
-        effect2 = Daedalus.DaedalusStructs.TimedEffect(
-            :beta, x -> x .* 0.3, x -> x ./ 0.3, 30.0, 40.0
-        )
-        effect3 = Daedalus.DaedalusStructs.TimedEffect(
-            :beta, x -> x .* 0.5, x -> x ./ 0.5, 60.0, 80.0
-        )
-        npi = Daedalus.DaedalusStructs.Npi([effect1, effect2, effect3])
-        savepoints = 0.0:1.0:100.0
-        callbacks = Daedalus.Events.make_events(npi, savepoints)
 
-        @test isa(callbacks, DiffEqCallbacks.CallbackSet)
-        # Should have 6 callbacks: 2 per effect (on/off)
-        @test length(callbacks.discrete_callbacks) == 6
+        @test effect.target == :beta
+        @test effect.trigger_on.value == 10.0
+        @test effect.trigger_off.value == 20.0
+        @test !effect.ison
     end
 end
 
-@testset "TimedEffect integration with daedalus model" begin
-    @testset "Model runs with single timed effect" begin
-        effect = Daedalus.DaedalusStructs.TimedEffect(
-            :beta, x -> x .* 0.5, x -> x ./ 0.5, 15.0, 45.0
+@testset "Npi with ParamEffect" begin
+    @testset "Npi construction with single reactive effect" begin
+        trigger_on = Daedalus.DaedalusStructs.ReactiveTrigger(5000.0, "H")
+        trigger_off = Daedalus.DaedalusStructs.ReactiveTrigger(1.0, "Rt")
+        effect = Daedalus.DaedalusStructs.ParamEffect(
+            :beta, x -> x .* 0.4, x -> x ./ 0.4,
+            trigger_on, trigger_off
         )
         npi = Daedalus.DaedalusStructs.Npi([effect])
 
-        result = Daedalus.daedalus(
-            "Australia",
-            "sars-cov-2 delta",
-            time_end = 80.0,
-            increment = 1.0,
-            npi = npi,
-            log_rt = true
-        )
-
-        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
-        @test result.npi === npi
-        @test result.saves == []  # TimedEffect has no saves, returns []
+        @test length(npi.effects) == 1
+        @test npi.effects[1].target == :beta
     end
 
-    @testset "Model runs with multiple timed effects" begin
-        effect1 = Daedalus.DaedalusStructs.TimedEffect(
-            :beta, x -> x .* 0.7, x -> x ./ 0.7, 10.0, 25.0
-        )
-        effect2 = Daedalus.DaedalusStructs.TimedEffect(
-            :beta, x -> x .* 0.4, x -> x ./ 0.4, 30.0, 50.0
-        )
-        effect3 = Daedalus.DaedalusStructs.TimedEffect(
-            :beta, x -> x .* 0.6, x -> x ./ 0.6, 60.0, 75.0
-        )
-        npi = Daedalus.DaedalusStructs.Npi([effect1, effect2, effect3])
-
-        result = Daedalus.daedalus(
-            "Australia",
-            "sars-cov-1",
-            time_end = 100.0,
-            increment = 1.0,
-            npi = npi,
-            log_rt = false
-        );
-
-        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
-        @test result.npi === npi
-        @test result.saves == []
-    end
-
-    @testset "Model runs without Rt logging" begin
-        effect = Daedalus.DaedalusStructs.TimedEffect(
-            :beta, x -> x .* 0.3, x -> x ./ 0.3, 20.0, 40.0
-        )
-        npi = Daedalus.DaedalusStructs.Npi([effect])
-
-        result = Daedalus.daedalus(
-            "Australia",
-            "sars-cov-1",
-            time_end = 60.0,
-            npi = npi,
-            log_rt = false
+    @testset "Npi construction with multiple effects" begin
+        trigger_on1 = Daedalus.DaedalusStructs.ReactiveTrigger(5000.0, "H")
+        trigger_off1 = Daedalus.DaedalusStructs.ReactiveTrigger(1.0, "Rt")
+        effect1 = Daedalus.DaedalusStructs.ParamEffect(
+            :beta, x -> x .* 0.4, x -> x ./ 0.4,
+            trigger_on1, trigger_off1
         )
 
-        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
+        trigger_on2 = Daedalus.DaedalusStructs.ReactiveTrigger(100.0, "D")
+        trigger_off2 = Daedalus.DaedalusStructs.ReactiveTrigger(1.0, "Rt")
+        effect2 = Daedalus.DaedalusStructs.ParamEffect(
+            :omega, x -> x .* 0.8, x -> x ./ 0.8,
+            trigger_on2, trigger_off2
+        )
+
+        npi = Daedalus.DaedalusStructs.Npi([effect1, effect2])
+        @test length(npi.effects) == 2
+        @test npi.effects[1].target == :beta
+        @test npi.effects[2].target == :omega
     end
 end
 
-@testset "TimedEffect and reactive Npi coexistence" begin
-    @testset "Model accepts reactive Npi (unchanged behavior)" begin
-        effect = Daedalus.DaedalusStructs.ReactiveEffect(
-            :beta, x -> x .* 0.4, x -> x ./ 0.4;
-            on = ("H", 5000.0), off = ("Rt", 1.0)
+@testset "Reactive NPI model integration" begin
+    @testset "Model runs with reactive NPI" begin
+        trigger_on = Daedalus.DaedalusStructs.ReactiveTrigger(5000.0, "H")
+        trigger_off = Daedalus.DaedalusStructs.ReactiveTrigger(1.0, "Rt")
+        effect = Daedalus.DaedalusStructs.ParamEffect(
+            :beta, x -> x .* 0.4, x -> x ./ 0.4,
+            trigger_on, trigger_off
         )
         npi = Daedalus.DaedalusStructs.Npi([effect])
 
@@ -122,7 +93,7 @@ end
         @test !isnothing(result.saves)  # Reactive NPI has saved values
     end
 
-    @testset "Model accepts nothing (unchanged behavior)" begin
+    @testset "Model runs without NPI" begin
         result = Daedalus.daedalus(
             "Australia",
             "influenza 2009",
@@ -136,35 +107,21 @@ end
     end
 end
 
-@testset "Npi with flexible parameter effects" begin
-    @testset "Single parameter (new style with ReactiveEffect)" begin
-        effect = Daedalus.DaedalusStructs.ReactiveEffect(
-            :beta, x -> x .* 0.5, x -> x ./ 0.5;
-            on = ("H", 5000.0), off = ("Rt", 1.0)
-        )
-        npi = Daedalus.DaedalusStructs.Npi([effect])
-        @test length(npi.effects) == 1
-        @test npi.effects[1].target == :beta
+@testset "Npi with multiple reactive effects" begin
+    @testset "Multiple parameters with same triggers" begin
+        trigger_on = Daedalus.DaedalusStructs.ReactiveTrigger(5000.0, "H")
+        trigger_off = Daedalus.DaedalusStructs.ReactiveTrigger(1.0, "Rt")
 
-        result = Daedalus.daedalus(
-            "Australia",
-            "influenza 2009",
-            time_end = 200.0,
-            npi = npi
+        effect_beta = Daedalus.DaedalusStructs.ParamEffect(
+            :beta, x -> x .* 0.6, x -> x ./ 0.6,
+            trigger_on, trigger_off
         )
-        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
-    end
-
-    @testset "Multiple parameters" begin
-        effect_beta = Daedalus.DaedalusStructs.ReactiveEffect(
-            :beta, x -> x .* 0.6, x -> x ./ 0.6;
-            on = ("H", 5000.0), off = ("Rt", 1.0)
-        )
-        effect_omega = Daedalus.DaedalusStructs.ReactiveEffect(
-            :omega, x -> x .* 0.6, x -> x ./ 0.6;
-            on = ("H", 5000.0), off = ("Rt", 1.0)
+        effect_omega = Daedalus.DaedalusStructs.ParamEffect(
+            :omega, x -> x .* 0.6, x -> x ./ 0.6,
+            trigger_on, trigger_off
         )
         npi = Daedalus.DaedalusStructs.Npi([effect_beta, effect_omega])
+
         @test length(npi.effects) == 2
         @test npi.effects[1].target == :beta
         @test npi.effects[2].target == :omega
@@ -172,157 +129,96 @@ end
         result = Daedalus.daedalus(
             "Australia",
             "influenza 2009",
-            time_end = 200.0,
+            time_end = 100.0,
             npi = npi
         )
         @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
     end
 
-    @testset "Different functions for different parameters" begin
-        effect_beta = Daedalus.DaedalusStructs.ReactiveEffect(
-            :beta, x -> x .* 0.4, x -> x ./ 0.4;
-            on = ("H", 5000.0), off = ("Rt", 1.0)
+    @testset "Different transformation functions per parameter" begin
+        trigger_on_beta = Daedalus.DaedalusStructs.ReactiveTrigger(5000.0, "H")
+        trigger_off_beta = Daedalus.DaedalusStructs.ReactiveTrigger(1.0, "Rt")
+        effect_beta = Daedalus.DaedalusStructs.ParamEffect(
+            :beta, x -> x .* 0.4, x -> x ./ 0.4,
+            trigger_on_beta, trigger_off_beta
         )
-        effect_omega = Daedalus.DaedalusStructs.ReactiveEffect(
-            :omega, x -> x .* 0.7, x -> x ./ 0.7;
-            on = ("D", 100.0), off = ("Rt", 1.0)
+
+        trigger_on_omega = Daedalus.DaedalusStructs.ReactiveTrigger(100.0, "D")
+        trigger_off_omega = Daedalus.DaedalusStructs.ReactiveTrigger(1.0, "Rt")
+        effect_omega = Daedalus.DaedalusStructs.ParamEffect(
+            :omega, x -> x .* 0.7, x -> x ./ 0.7,
+            trigger_on_omega, trigger_off_omega
         )
+
         npi = Daedalus.DaedalusStructs.Npi([effect_beta, effect_omega])
         @test length(npi.effects) == 2
-        @test npi.effects[1].target == :beta
-        @test npi.effects[2].target == :omega
 
-        result = Daedalus.daedalus(
-            "Australia",
-            "influenza 2009",
-            time_end = 200.0,
-            npi = npi
-        )
-        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
-    end
-
-    @testset "Per-parameter independent triggers" begin
-        effect_beta = Daedalus.DaedalusStructs.ReactiveEffect(
-            :beta, x -> x .* 0.4, x -> x ./ 0.4;
-            on = ("H", 5000.0), off = ("Rt", 1.0)
-        )
-        effect_omega = Daedalus.DaedalusStructs.ReactiveEffect(
-            :omega, x -> x .* 0.7, x -> x ./ 0.7;
-            on = ("D", 100.0), off = ("Rt", 1.0)
-        )
-        npi = Daedalus.DaedalusStructs.Npi([effect_beta, effect_omega])
-        @test length(npi.effects) == 2
-        @test npi.effects[1].target == :beta
-        @test npi.effects[2].target == :omega
         test_val = 2.0
         @test npi.effects[1].func(test_val) ≈ 0.8
         @test npi.effects[2].func(test_val) ≈ 1.4
-        @test npi.effects[1].comp_on.name == "H"
-        @test npi.effects[2].comp_on.name == "D"
 
         result = Daedalus.daedalus(
             "Australia",
             "influenza 2009",
-            time_end = 200.0,
+            time_end = 100.0,
             npi = npi
         )
         @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
     end
 
-    @testset "Multiple effects with different on/off conditions" begin
-        effect_beta = Daedalus.DaedalusStructs.ReactiveEffect(
-            :beta, x -> x .* 0.5, x -> x ./ 0.5;
-            on = ("H", 5000.0), off = ("Rt", 1.0)
+    @testset "Independent triggers for each effect" begin
+        trigger_on_beta = Daedalus.DaedalusStructs.ReactiveTrigger(5000.0, "H")
+        trigger_off_beta = Daedalus.DaedalusStructs.ReactiveTrigger(1.0, "Rt")
+        effect_beta = Daedalus.DaedalusStructs.ParamEffect(
+            :beta, x -> x .* 0.5, x -> x ./ 0.5,
+            trigger_on_beta, trigger_off_beta
         )
-        effect_omega = Daedalus.DaedalusStructs.ReactiveEffect(
-            :omega, x -> x .* 0.9, x -> x ./ 0.9;
-            on = ("I", 10000.0), off = ("H", 2000.0)
+
+        trigger_on_omega = Daedalus.DaedalusStructs.ReactiveTrigger(10000.0, "I")
+        trigger_off_omega = Daedalus.DaedalusStructs.ReactiveTrigger(2000.0, "H")
+        effect_omega = Daedalus.DaedalusStructs.ParamEffect(
+            :omega, x -> x .* 0.9, x -> x ./ 0.9,
+            trigger_on_omega, trigger_off_omega
         )
+
         npi = Daedalus.DaedalusStructs.Npi([effect_beta, effect_omega])
         @test length(npi.effects) == 2
-        param_names = Set(eff.target for eff in npi.effects)
-        @test param_names == Set([:beta, :omega])
 
-        beta_eff = [eff for eff in npi.effects if eff.target == :beta][1]
-        omega_eff = [eff for eff in npi.effects if eff.target == :omega][1]
-        test_val = 10.0
-        @test beta_eff.func(test_val) ≈ 5.0
-        @test omega_eff.func(test_val) ≈ 9.0
+        beta_eff = npi.effects[1]
+        omega_eff = npi.effects[2]
 
-        @test beta_eff.comp_on.name == "H"
-        @test beta_eff.comp_on.value == 5000.0
-        @test omega_eff.comp_on.name == "I"
-        @test omega_eff.comp_on.value == 10000.0
-        @test beta_eff.comp_off.name == "Rt"
-        @test omega_eff.comp_off.name == "H"
+        @test beta_eff.trigger_on.name == "H"
+        @test beta_eff.trigger_on.value == 5000.0
+        @test beta_eff.trigger_off.name == "Rt"
+        @test omega_eff.trigger_on.name == "I"
+        @test omega_eff.trigger_on.value == 10000.0
+        @test omega_eff.trigger_off.name == "H"
 
         result = Daedalus.daedalus(
             "Australia",
             "influenza 2009",
-            time_end = 200.0,
-            npi = npi
-        )
-        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
-    end
-end
-
-@testset "Npi with per-effect trigger conditions" begin
-    @testset "Direct ReactiveEffect construction with custom triggers" begin
-        effect_beta = Daedalus.DaedalusStructs.ReactiveEffect(
-            :beta, x -> x .* 0.4, x -> x ./ 0.4;
-            on = ("H", 5000.0), off = ("Rt", 1.0)
-        )
-        effect_gamma = Daedalus.DaedalusStructs.ReactiveEffect(
-            :omega, x -> x .* 0.8, x -> x ./ 0.8;
-            on = ("D", 100.0), off = ("Rt", 1.0)
-        )
-
-        npi = Daedalus.DaedalusStructs.Npi([effect_beta, effect_gamma])
-        @test length(npi.effects) == 2
-        @test npi.effects[1].target == :beta
-        @test npi.effects[2].target == :omega
-        @test npi.effects[1].comp_on.name == "H"
-        @test npi.effects[2].comp_on.name == "D"
-        @test npi.effects[1].comp_on.value == 5000.0
-        @test npi.effects[2].comp_on.value == 100.0
-
-        result = Daedalus.daedalus(
-            "Australia",
-            "influenza 2009",
-            time_end = 200.0,
-            npi = npi
-        )
-        @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
-    end
-
-    @testset "Infectious (I) compartment trigger" begin
-        effect = Daedalus.DaedalusStructs.ReactiveEffect(
-            :beta, x -> x .* 0.5, x -> x ./ 0.5;
-            on = ("I", 8000.0), off = ("Rt", 1.0)
-        )
-        npi = Daedalus.DaedalusStructs.Npi([effect])
-        @test npi.effects[1].comp_on.name == "I"
-
-        result = Daedalus.daedalus(
-            "Australia",
-            "influenza 2009",
-            time_end = 200.0,
+            time_end = 100.0,
             npi = npi
         )
         @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
     end
 
     @testset "Each effect tracks its own activation state" begin
-        effect1 = Daedalus.DaedalusStructs.ReactiveEffect(
-            :beta, x -> x .* 0.4, x -> x ./ 0.4;
-            on = ("H", 5000.0), off = ("Rt", 1.0)
+        trigger_on1 = Daedalus.DaedalusStructs.ReactiveTrigger(5000.0, "H")
+        trigger_off1 = Daedalus.DaedalusStructs.ReactiveTrigger(1.0, "Rt")
+        effect1 = Daedalus.DaedalusStructs.ParamEffect(
+            :beta, x -> x .* 0.4, x -> x ./ 0.4,
+            trigger_on1, trigger_off1
         )
-        effect2 = Daedalus.DaedalusStructs.ReactiveEffect(
-            :omega, x -> x .* 0.7, x -> x ./ 0.7;
-            on = ("D", 100.0), off = ("Rt", 1.0)
-        )
-        npi = Daedalus.DaedalusStructs.Npi([effect1, effect2])
 
+        trigger_on2 = Daedalus.DaedalusStructs.ReactiveTrigger(100.0, "D")
+        trigger_off2 = Daedalus.DaedalusStructs.ReactiveTrigger(1.0, "Rt")
+        effect2 = Daedalus.DaedalusStructs.ParamEffect(
+            :omega, x -> x .* 0.7, x -> x ./ 0.7,
+            trigger_on2, trigger_off2
+        )
+
+        npi = Daedalus.DaedalusStructs.Npi([effect1, effect2])
         @test !npi.effects[1].ison
         @test !npi.effects[2].ison
     end

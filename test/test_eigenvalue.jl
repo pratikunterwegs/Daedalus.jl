@@ -201,10 +201,12 @@ end
     end
 
     @testset "Rt with NPI intervention" begin
-        # Create a simple NPI for testing (new style with ReactiveEffect)
-        effect = Daedalus.DaedalusStructs.ReactiveEffect(
-            :beta, x -> x .* 0.7, x -> x ./ 0.7;
-            on = ("H", 20000.0), off = ("Rt", 1.0)
+        # Create a simple NPI for testing with ParamEffect
+        trigger_on = Daedalus.DaedalusStructs.ReactiveTrigger(20000.0, "H")
+        trigger_off = Daedalus.DaedalusStructs.ReactiveTrigger(1.0, "Rt")
+        effect = Daedalus.DaedalusStructs.ParamEffect(
+            :beta, x -> x .* 0.7, x -> x ./ 0.7,
+            trigger_on, trigger_off
         )
         npi = Daedalus.DaedalusStructs.Npi([effect])
 
