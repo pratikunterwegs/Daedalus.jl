@@ -44,12 +44,9 @@ end
         )
         npi = Daedalus.DaedalusStructs.Npi([effect])
 
-        infection = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
-        infection.r0 = 2.0
-
         result = Daedalus.daedalus(
             "Australia",
-            infection,
+            "sars-cov-2 delta",
             time_end = 80.0,
             increment = 1.0,
             npi = npi,
@@ -58,7 +55,7 @@ end
 
         @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
         @test result.npi === npi
-        @test isnothing(result.saves)  # TimedEffect has no saved values
+        @test result.saves == []  # TimedEffect has no saves, returns []
     end
 
     @testset "Model runs with multiple timed effects" begin
@@ -80,11 +77,11 @@ end
             increment = 1.0,
             npi = npi,
             log_rt = false
-        )
+        );
 
         @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
         @test result.npi === npi
-        @test isnothing(result.saves)
+        @test result.saves == []
     end
 
     @testset "Model runs without Rt logging" begin

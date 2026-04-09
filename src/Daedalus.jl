@@ -12,4 +12,6 @@ include("Model.jl")
 include("Ensemble.jl")
 include("Outputs.jl")
 
+export Npi, ReactiveEffect, TimedEffect
+
 end

@@ -17,7 +17,13 @@ State-dependent NPIs may be useful when there is clarity on the system state tha
 - How to modify it (transformation function)
 - When to activate and deactivate (independent trigger conditions per effect)
 
-## Basic example: Single parameter with custom trigger
+## Basic example: Single parameter with prevalence trigger
+
+This example shows how to implement an NPI that reduces transmission by 20% once hospital occupancy crosses 20000 beds.
+The NPI is removed once hospital occupancy falls below 10000 beds.
+
+This is the simplest kind of reactive event, as it is conditioned on the state of the system `x`.
+For a compartmental epidemic model this equates to an event that is reactive to prevalence.
 
 ```@example reactive_npi
 using Daedalus
@@ -26,9 +32,10 @@ using Plots
 # Create an effect: reduce beta by 20% when hospitalizations exceed 5000
 effect = Daedalus.DaedalusStructs.ParamEffect(
     :beta,
-    x -> x .* 0.8;
-    on = ("H", 5000.0),    # Activate when H > 5000
-    off = ("Rt", 1.0)      # Deactivate when Rt < 1.0
+    x -> x .* 0.7,         # reduce by 20%
+    x -> x ./ 0.7;         # reset: divide by 0.8
+    on = ("H", 20000.0),    # Activate when H > 20000
+    off = ("H", 10000.0)      # Deactivate when H < 10000.0
 )
 
 # Create NPI from the effect
@@ -72,15 +79,17 @@ using Plots
 # Create multiple effects with different triggers
 effect_beta = Daedalus.DaedalusStructs.ParamEffect(
     :beta,
-    x -> x .* 0.8;
-    on = ("H", 5000.0),     # Activate on hospitalizations
+    x -> x .* 0.8,         # reduce by 20%
+    x -> x ./ 0.8;         # reset: divide by 0.8
+    on = ("H", 5000.0),    # Activate on hospitalizations
     off = ("Rt", 1.0)
 )
 
 hosp_capacity = 20e3
 effect_omega = Daedalus.DaedalusStructs.ParamEffect(
     :omega,
-    x -> x .* 1.2;
+    x -> x .* 1.2,         # increase by 20%
+    x -> x ./ 1.2;         # reset: divide by 1.2
     on = ("H", hosp_capacity),
     off = ("H", hosp_capacity / 2.0)
 )

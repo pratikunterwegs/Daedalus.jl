@@ -96,7 +96,8 @@ using Daedalus
 # Define a reactive NPI: reduce transmission by 50% when hospitalizations exceed 10,000
 effect = Daedalus.DaedalusStructs.ParamEffect(
     :beta,
-    x -> x .* 0.5;  # 50% reduction
+    x -> x .* 0.5,      # 50% reduction
+    x -> x ./ 0.5;      # reset: divide by 0.5
     on = ("H", 10000.0),
     off = ("Rt", 1.0)
 )
