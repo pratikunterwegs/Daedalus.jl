@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.9] - 2026-04-01
+
+### Changed (Breaking)
+- Unified NPI types: `Npi` is now the single container for all parameter effects (both reactive and timed)
+  - `abstract type Effect` renamed to `abstract type ParamEffect`
+  - `ParamEffect` struct renamed to `ReactiveEffect` — state-dependent interventions with independent on/off triggers
+  - New `TimedEffect <: ParamEffect` struct for time-limited interventions (replaces `TimedNpi`)
+    - Constructor: `TimedEffect(target, func, reset_func, start_time, end_time)`
+    - Example: `TimedEffect(:beta, x -> x .* 0.7, x -> x ./ 0.7, 10.0, 40.0)`
+  - `Npi` now accepts both `ReactiveEffect` and `TimedEffect` objects via `Npi(effects::AbstractVector{<:ParamEffect})`
+    - Unified callback handling: `make_events(npi, savepoints)` dispatches per effect type
+  - `TimedNpi` struct removed; use `Npi([TimedEffect(...)])` instead
+  - Removed public functions: `n_phases`, `total_duration`, `make_timed_npi_callbacks`
+  - Removed public type: `TimedNpi`
+- Behavior changes:
+  - `result.saves` now only contains `SavedValues` for `ReactiveEffect` entries (skips `TimedEffect`)
+  - `Union{Npi, TimedNpi, Nothing}` type annotations throughout codebase replaced with `Union{Npi, Nothing}`
+  - `make_param_changer(eff::ParamEffect)` and `make_param_reset(eff::ParamEffect)` now dispatch on specific effect types
+  - `make_save_events(npi::Npi)` skips `TimedEffect` entries (no state-based saving needed for timed interventions)
+
 ## [0.0.8] - 2026-03-31
 
 ### Changed (Breaking)

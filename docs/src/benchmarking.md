@@ -54,7 +54,8 @@ using BenchmarkTools
 # Create a reactive NPI: reduce transmission when hospitalizations exceed 20,000
 effect = Daedalus.DaedalusStructs.ParamEffect(
     :beta,
-    x -> x .* 0.3;  # 70% reduction
+    x -> x .* 0.3,      # 70% reduction
+    x -> x ./ 0.3;      # reset: divide by 0.3
     on = ("H", 20000.0),
     off = ("Rt", 1.0)
 )

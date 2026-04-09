@@ -364,6 +364,7 @@ function daedalus(
     saved_vals = if isnothing(npi)
         nothing
     elseif isa(npi, Npi)
+        # TODO: write fn to extract saves
         [eff.saved_values for eff in npi.effects if isa(eff, ReactiveEffect)]
     else
         nothing

@@ -41,27 +41,25 @@ end
 
 abstract type Event end
 
-abstract type StateData end
+abstract type Trigger end
 
-abstract type ParamEffect end
+abstract type Effect end
 
-struct CtStateData <: StateData
+struct ReactiveTrigger <: Trigger
     name::String
     value::Float64
-    time_type::String
 
-    function CtStateData(name, value)
-        return new(name, value, "continuous")
+    function ReactiveTrigger(name, value)
+        return new(name, value)
     end
 end
 
-struct DsStateData <: StateData
+struct TimeTrigger <: Trigger
     name::String
     value::Float64
-    time_type::String
 
-    function DsStateData(name, value)
-        return new(name, value, "discrete")
+    function TimeTrigger(name = "time", value)
+        return new(name, value)
     end
 end
 
@@ -78,8 +76,8 @@ for activation and deactivation.
 - `reset_func::Function`: A function mapping the modified parameter value to the
     original value. This is needed when multiple effects overlap, so as to be
     able to return `target` to its pre-modification value.
-- `comp_on::StateData`: Trigger condition to activate this effect
-- `comp_off::StateData`: Trigger condition to deactivate this effect
+- `trigger_on::StateData`: Trigger condition to activate this effect
+- `trigger_off::StateData`: Trigger condition to deactivate this effect
 - `saved_values::SavedValues`: Historical state values for tracking this effect's triggers
 - `is_on::Bool`: Current activation status for this effect
 
@@ -87,7 +85,7 @@ for activation and deactivation.
 
 ## Full constructor (with StateData objects)
 ```julia
-ReactiveEffect(target::Symbol, func::Function, comp_on::StateData, comp_off::StateData)
+ReactiveEffect(target::Symbol, func::Function, trigger_on::StateData, trigger_off::StateData)
 ```
 
 ## Keyword convenience constructor
@@ -104,21 +102,21 @@ ReactiveEffect(:beta, x -> x .* 0.4, x -> x ./ 0.4; on=("H", 5000.0), off=("Rt",
 ReactiveEffect(:gamma_Ia, x -> x .* 0.8, x -> x ./ 0.8; on=("D", 100.0), off=("I", 8000.0))
 ```
 """
-mutable struct ReactiveEffect <: ParamEffect
+mutable struct ParamEffect <: Effect
     target::Symbol
     func::Function
     reset_func::Function
-    comp_on::StateData
-    comp_off::StateData
+    trigger_on::Trigger
+    trigger_off::Trigger
     saved_values::SavedValues
     ison::Bool
 
     # Full constructor with StateData objects
     function ReactiveEffect(target::Symbol, func::Function,
             reset_func::Function,
-            comp_on::StateData, comp_off::StateData)
+            trigger_on::StateData, trigger_off::StateData)
         sv = SavedValues(Float64, Tuple{Float64, Float64})
-        return new(target, func, reset_func, comp_on, comp_off, sv, false)
+        return new(target, func, reset_func, trigger_on, trigger_off, sv, false)
     end
 end
 
@@ -126,7 +124,8 @@ end
 function ReactiveEffect(target::Symbol, func::Function, reset_func::Function;
         on::Tuple{String, Float64},
         off::Tuple{String, Float64})
-    ReactiveEffect(target, func, reset_func, CtStateData(on...), DsStateData(off...))
+    ReactiveEffect(target, func, reset_func,
+        ReactiveTrigger(on...), ReactiveTrigger(off...))
 end
 
 """
@@ -139,45 +138,45 @@ function get_indices(x::StateData)
     return Constants.get_indices(x.name)
 end
 
-"""
-    TimedEffect
+# """
+#     TimedEffect
 
-A mutable struct specifying how an NPI modifies a single ODE parameter at
-specified time points (time-limited / timed intervention).
+# A mutable struct specifying how an NPI modifies a single ODE parameter at
+# specified time points (time-limited / timed intervention).
 
-# Fields
-- `target::Symbol`: The parameter to modify (e.g., `:beta`, `:omega`)
-- `func::Function`: A function mapping the original parameter value to the modified value
-- `reset_func::Function`: A function mapping the modified parameter value back to the original value
-- `start_time::Float64`: Time (days) at which to activate the effect
-- `end_time::Float64`: Time (days) at which to deactivate the effect
+# # Fields
+# - `target::Symbol`: The parameter to modify (e.g., `:beta`, `:omega`)
+# - `func::Function`: A function mapping the original parameter value to the modified value
+# - `reset_func::Function`: A function mapping the modified parameter value back to the original value
+# - `start_time::Float64`: Time (days) at which to activate the effect
+# - `end_time::Float64`: Time (days) at which to deactivate the effect
 
-# Constructor
-```julia
-TimedEffect(target::Symbol, func::Function, reset_func::Function, start_time::Float64, end_time::Float64)
-```
+# # Constructor
+# ```julia
+# TimedEffect(target::Symbol, func::Function, reset_func::Function, start_time::Float64, end_time::Float64)
+# ```
 
-# Example
-```julia
-# Reduce beta by 30% from day 10 to day 40
-TimedEffect(:beta, x -> x .* 0.7, x -> x ./ 0.7, 10.0, 40.0)
+# # Example
+# ```julia
+# # Reduce beta by 30% from day 10 to day 40
+# TimedEffect(:beta, x -> x .* 0.7, x -> x ./ 0.7, 10.0, 40.0)
 
-# Increase omega by 20% from day 15 to day 50
-TimedEffect(:omega, x -> x .* 1.2, x -> x ./ 1.2, 15.0, 50.0)
-```
-"""
-mutable struct TimedEffect <: ParamEffect
-    target::Symbol
-    func::Function
-    reset_func::Function
-    start_time::Float64
-    end_time::Float64
+# # Increase omega by 20% from day 15 to day 50
+# TimedEffect(:omega, x -> x .* 1.2, x -> x ./ 1.2, 15.0, 50.0)
+# ```
+# """
+# mutable struct TimedEffect <: ParamEffect
+#     target::Symbol
+#     func::Function
+#     reset_func::Function
+#     start_time::Float64
+#     end_time::Float64
 
-    function TimedEffect(target::Symbol, func::Function, reset_func::Function,
-            start_time::Float64, end_time::Float64)
-        return new(target, func, reset_func, start_time, end_time)
-    end
-end
+#     function TimedEffect(target::Symbol, func::Function, reset_func::Function,
+#             start_time::Float64, end_time::Float64)
+#         return new(target, func, reset_func, start_time, end_time)
+#     end
+# end
 
 """
     Npi
@@ -220,13 +219,11 @@ npi = Npi([
 ```
 """
 mutable struct Npi <: Event
-    effects::Vector{ParamEffect}
+    effects::Vector{Effect}
 
-    # Direct constructor (accepts any vector of ParamEffect subtypes)
-    function Npi(effects::AbstractVector{<:ParamEffect})
-        return new(Vector{ParamEffect}(effects))
+    function Npi(effects::Vector{<:Effect})
+        return new(Vector{Effect}(effects))
     end
 end
-
 
 end

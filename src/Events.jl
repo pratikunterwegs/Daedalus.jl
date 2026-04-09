@@ -13,54 +13,60 @@ export make_events, make_param_changer, make_param_reset,
        make_save_events, make_rt_logger, get_coef
 
 """
-    make_param_changer(eff::ReactiveEffect)::Function
+    make_param_changer(eff::ParamEffect)::Function
 
 Create a callback function that modifies a parameter based on reactive state conditions.
 
 # Arguments
-- `eff::ReactiveEffect`: A ReactiveEffect with state-dependent trigger conditions
+- `eff::ParamEffect`: A ParamEffect with state-dependent trigger conditions
 
 # Returns
 A `Function` that takes an `integrator` and modifies the target parameter in-place
 """
-function make_param_changer(eff::ReactiveEffect)::Function
+function make_param_changer(eff::ParamEffect)::Function
     function effect!(integrator)
-        if length(eff.saved_values.saveval) > 0
-            value_on = eff.comp_on.value
-            u = eff.saved_values.saveval[end][1] # index 1 for comp_on
-
-            if u > value_on && !eff.ison
-                eff.ison = true
-                original = getproperty(integrator.p, eff.target)
-                new_val = eff.func(original)
-                setproperty!(integrator.p, eff.target, new_val)
-            end
+        # special case for time-dependent NPIs
+        if eff.comp_on.name == "time"
+            original = getproperty(integrator.p, eff.target)
+            new_val = eff.func(original)
+            setproperty!(integrator.p, eff.target, new_val)
         else
-            nothing
+            # all other triggers
+            if length(eff.saved_values.saveval) > 0
+                value_on = eff.comp_on.value
+                u = eff.saved_values.saveval[end][1] # index 1 for comp_on
+                if u > value_on && !eff.ison
+                    eff.ison = true
+                    original = getproperty(integrator.p, eff.target)
+                    new_val = eff.func(original)
+                    setproperty!(integrator.p, eff.target, new_val)
+                end
+            else
+                nothing
+            end
         end
-    end
     return effect!
 end
 
-"""
-    make_param_changer(eff::TimedEffect)::Function
+# """
+#     make_param_changer(eff::TimedEffect)::Function
 
-Create a callback function that modifies a parameter for a timed effect.
+# Create a callback function that modifies a parameter for a timed effect.
 
-# Arguments
-- `eff::TimedEffect`: A TimedEffect with fixed start/end times
+# # Arguments
+# - `eff::TimedEffect`: A TimedEffect with fixed start/end times
 
-# Returns
-A `Function` that takes an `integrator` and modifies the target parameter in-place
-"""
-function make_param_changer(eff::TimedEffect)::Function
-    function effect!(integrator)
-        original = getproperty(integrator.p, eff.target)
-        new_val = eff.func(original)
-        setproperty!(integrator.p, eff.target, new_val)
-    end
-    return effect!
-end
+# # Returns
+# A `Function` that takes an `integrator` and modifies the target parameter in-place
+# """
+# function make_param_changer(eff::TimedEffect)::Function
+#     function effect!(integrator)
+#         original = getproperty(integrator.p, eff.target)
+#         new_val = eff.func(original)
+#         setproperty!(integrator.p, eff.target, new_val)
+#     end
+#     return effect!
+# end
 
 """
     make_param_reset(eff::ReactiveEffect)::Function
@@ -73,44 +79,50 @@ Create a callback function that resets a parameter based on reactive state condi
 # Returns
 A `Function` that takes an `integrator` and resets the target parameter in-place
 """
-function make_param_reset(eff::ReactiveEffect)::Function
+function make_param_reset(eff::ParamEffect)::Function
     function effect!(integrator)
-        if length(eff.saved_values.saveval) > 0
-            value_off = eff.comp_off.value
-            u = eff.saved_values.saveval[end][2] # index 2 for comp_off
-
-            if u < value_off && eff.ison
-                eff.ison = false
-                current = getproperty(integrator.p, eff.target)
-                reset_val = eff.reset_func(current)
-                setproperty!(integrator.p, eff.target, reset_val)
+        if eff.comp_off.name == "time"
+            current = getproperty(integrator.p, eff.target)
+            reset_val = eff.reset_func(current)
+            setproperty!(integrator.p, eff.target, reset_val)
+        else 
+            if length(eff.saved_values.saveval) > 0
+                value_off = eff.comp_off.value
+                u = eff.saved_values.saveval[end][2] # index 2 for comp_off
+    
+                if u < value_off && eff.ison
+                    eff.ison = false
+                    current = getproperty(integrator.p, eff.target)
+                    reset_val = eff.reset_func(current)
+                    setproperty!(integrator.p, eff.target, reset_val)
+                end
+            else
+                nothing
             end
-        else
-            nothing
         end
     end
     return effect!
 end
 
-"""
-    make_param_reset(eff::TimedEffect)::Function
+# """
+#     make_param_reset(eff::TimedEffect)::Function
 
-Create a callback function that resets a parameter for a timed effect.
+# Create a callback function that resets a parameter for a timed effect.
 
-# Arguments
-- `eff::TimedEffect`: A TimedEffect with fixed start/end times
+# # Arguments
+# - `eff::TimedEffect`: A TimedEffect with fixed start/end times
 
-# Returns
-A `Function` that takes an `integrator` and resets the target parameter in-place
-"""
-function make_param_reset(eff::TimedEffect)::Function
-    function effect!(integrator)
-        current = getproperty(integrator.p, eff.target)
-        reset_val = eff.reset_func(current)
-        setproperty!(integrator.p, eff.target, reset_val)
-    end
-    return effect!
-end
+# # Returns
+# A `Function` that takes an `integrator` and resets the target parameter in-place
+# """
+# function make_param_reset(eff::TimedEffect)::Function
+#     function effect!(integrator)
+#         current = getproperty(integrator.p, eff.target)
+#         reset_val = eff.reset_func(current)
+#         setproperty!(integrator.p, eff.target, reset_val)
+#     end
+#     return effect!
+# end
 
 """
     make_save_events(npi::Npi, savepoints)
@@ -129,10 +141,17 @@ entries are skipped (they do not require state-based saving).
 A `Vector{SavingCallback}` — one callback per ReactiveEffect, each writing to `eff.saved_values`
 """
 function make_save_events(npi::Npi, savepoints)
-    callbacks = []
+    cbset = CallbackSet()
     for eff in npi.effects
+        # handle comp on
+        if isa(eff.trigger_on, TimeTrigger) && isa(eff.trigger_off, TimeTrigger)
+            continue
+        elseif isa(eff.trigger_on, ReactiveTrigger)
+            idx_on = Constants.get_indices(eff.comp_on.name)
+        end
+        # handle comp off
         isa(eff, ReactiveEffect) || continue
-        idx_on = Constants.get_indices(eff.comp_on.name)
+        
         idx_off = Constants.get_indices(eff.comp_off.name)
 
         savingcb = SavingCallback(
