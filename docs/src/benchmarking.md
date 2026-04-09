@@ -52,12 +52,13 @@ using Daedalus
 using BenchmarkTools
 
 # Create a reactive NPI: reduce transmission when hospitalizations exceed 20,000
+trigger_on = Daedalus.DaedalusStructs.ReactiveTrigger(20000.0, "H")
+trigger_off = Daedalus.DaedalusStructs.ReactiveTrigger(1.0, "Rt")
 effect = Daedalus.DaedalusStructs.ParamEffect(
     :beta,
     x -> x .* 0.3,      # 70% reduction
-    x -> x ./ 0.3;      # reset: divide by 0.3
-    on = ("H", 20000.0),
-    off = ("Rt", 1.0)
+    x -> x ./ 0.3,      # reset: divide by 0.3
+    trigger_on, trigger_off
 )
 npi = Daedalus.DaedalusStructs.Npi([effect])
 
@@ -80,12 +81,25 @@ infection_re2.r0 = 5.0
 using Daedalus
 using BenchmarkTools
 
-timed_npi = Daedalus.DaedalusStructs.TimedNpi(
-    [60.0, 180.0, 300.0],
-    [120.0, 200.0, 365.0],
-    [0.3, 0.7, 0.5],
-    "three_phase_lockdown"
-)
+# Create three-phase time-based NPI with different reductions
+effects = [
+    Daedalus.DaedalusStructs.ParamEffect(
+        :beta, x -> x .* 0.7, x -> x ./ 0.7,
+        Daedalus.DaedalusStructs.TimeTrigger(60.0),
+        Daedalus.DaedalusStructs.TimeTrigger(120.0)
+    ),
+    Daedalus.DaedalusStructs.ParamEffect(
+        :beta, x -> x .* 0.3, x -> x ./ 0.3,
+        Daedalus.DaedalusStructs.TimeTrigger(180.0),
+        Daedalus.DaedalusStructs.TimeTrigger(200.0)
+    ),
+    Daedalus.DaedalusStructs.ParamEffect(
+        :beta, x -> x .* 0.5, x -> x ./ 0.5,
+        Daedalus.DaedalusStructs.TimeTrigger(300.0),
+        Daedalus.DaedalusStructs.TimeTrigger(365.0)
+    )
+]
+timed_npi = Daedalus.DaedalusStructs.Npi(effects)
 
 infection_te = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
 infection_te.r0 = 3.0

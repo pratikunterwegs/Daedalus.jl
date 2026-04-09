@@ -29,7 +29,7 @@ and infection parameters, with optional non-pharmaceutical interventions.
   - A [`DataLoader.InfectionData`](@ref) struct with all epidemiological parameters
   - A `Vector{DataLoader.InfectionData}` for ensemble runs with multiple pathogens (R0s extracted)
 - `npi`: Non-pharmaceutical intervention. Can be:
-  - `Npi`: Container of parameter effects (ReactiveEffect for state-dependent, TimedEffect for time-limited)
+  - `Npi`: Container of parameter effects (each with `ReactiveTrigger` or `TimeTrigger` conditions)
   - `nothing`: No intervention (default)
 - `log_rt`: Whether to compute and log effective reproduction number (default: true)
 - `time_end`: Simulation end time in days (default: 100.0)
@@ -58,7 +58,9 @@ result = daedalus("Australia", infection, time_end=200.0)
 
 ## Time-limited intervention
 ```julia
-effect = Daedalus.DaedalusStructs.TimedEffect(:beta, x -> x .* 0.7, x -> x ./ 0.7, 15.0, 45.0)
+trigger_on = Daedalus.DaedalusStructs.TimeTrigger(15.0)
+trigger_off = Daedalus.DaedalusStructs.TimeTrigger(45.0)
+effect = Daedalus.DaedalusStructs.ParamEffect(:beta, x -> x .* 0.7, x -> x ./ 0.7, trigger_on, trigger_off)
 npi = Daedalus.DaedalusStructs.Npi([effect])
 result = daedalus("Australia", "sars-cov-2 delta", time_end=200.0, npi=npi)
 ```

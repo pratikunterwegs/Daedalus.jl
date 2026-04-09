@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.10] - 20266-04-09
+
+### Changed (Breaking)
+- Simplified public API by hiding internal trigger state representation:
+  - Removed from exports: `ReactiveEffect`, `TimedEffect`, `StateData`, `CtStateData`, `DsStateData`, `get_indices`
+  - Added to exports: `Effect` (abstract type), `ParamEffect` (concrete effect type), `Trigger` (abstract type), `ReactiveTrigger`, `TimeTrigger` (concrete trigger types)
+  - Internal state tracking now uses abstract `Trigger` type instead of concrete `StateData` subtypes
+- Trigger constructor parameter order changed (breaking change for direct instantiation):
+  - `ReactiveTrigger(name, value)` → `ReactiveTrigger(value, name)` (value now first positional argument)
+  - `TimeTrigger(name="time", value)` → `TimeTrigger(value, name="time")` (value now first positional argument)
+- Removed convenience constructor: `ReactiveEffect(target, func, reset_func; on=(...), off=(...))` — use full `ParamEffect` constructor with explicit `ReactiveTrigger`/`TimeTrigger` objects instead
+- Removed public function: `get_indices(x::StateData)` — internal helper no longer exported
+- Refactored `make_param_changer(eff::Effect)` and `make_param_reset(eff::Effect)` to dispatch on `Trigger` type using `isa(eff.trigger_on, TimeTrigger)` instead of string comparison on trigger names
+
 ## [0.0.9] - 2026-04-01
 
 ### Changed (Breaking)

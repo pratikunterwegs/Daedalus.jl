@@ -44,6 +44,20 @@ abstract type Trigger end
 
 abstract type Effect end
 
+"""
+    ReactiveTrigger
+
+A trigger based on epidemic state (e.g., hospitalization count, Rt).
+
+# Fields
+- `name::String`: Compartment name (e.g., "H", "Rt")
+- `value::Float64`: Threshold value for triggering
+
+# Constructor
+```julia
+ReactiveTrigger(value::Float64, name::String)
+```
+"""
 struct ReactiveTrigger <: Trigger
     name::String
     value::Float64
@@ -53,6 +67,20 @@ struct ReactiveTrigger <: Trigger
     end
 end
 
+"""
+    TimeTrigger
+
+A trigger based on simulation time.
+
+# Fields
+- `name::String`: Always "time"
+- `value::Float64`: Time point (days) for triggering
+
+# Constructor
+```julia
+TimeTrigger(value::Float64, name::String = "time")
+```
+"""
 struct TimeTrigger <: Trigger
     name::String
     value::Float64
@@ -64,6 +92,30 @@ end
 
 """
     ParamEffect
+
+A parameter modification triggered by state or time conditions.
+
+# Fields
+- `target::Symbol`: Parameter to modify (e.g., `:beta`, `:omega`)
+- `func::Function`: Applied when activated
+- `reset_func::Function`: Applied when deactivated
+- `trigger_on::Trigger`: Activation condition (`ReactiveTrigger` or `TimeTrigger`)
+- `trigger_off::Trigger`: Deactivation condition
+- `saved_values::SavedValues`: Internal state tracking
+- `ison::Bool`: Current activation state
+
+# Constructor
+```julia
+ParamEffect(target::Symbol, func::Function, reset_func::Function,
+            trigger_on::Trigger, trigger_off::Trigger)
+```
+
+# Example
+```julia
+trigger_on = ReactiveTrigger(5000.0, "H")
+trigger_off = ReactiveTrigger(1.0, "Rt")
+effect = ParamEffect(:beta, x -> x .* 0.4, x -> x ./ 0.4, trigger_on, trigger_off)
+```
 """
 mutable struct ParamEffect <: Effect
     target::Symbol
@@ -74,7 +126,6 @@ mutable struct ParamEffect <: Effect
     saved_values::SavedValues
     ison::Bool
 
-    # Full constructor with StateData objects
     function ParamEffect(target::Symbol, func::Function,
             reset_func::Function,
             trigger_on::Trigger, trigger_off::Trigger)
@@ -86,22 +137,24 @@ end
 """
     Npi
 
-A mutable struct to specify non-pharmaceutical interventions (NPIs). It is a unified container
-of parameter effects (both reactive and timed), each specifying how to modify an ODE parameter
-and when to activate/deactivate.
+A container for parameter modifications (effects), each with trigger conditions.
 
 # Fields
-- `effects::Vector{ParamEffect}`: Parameter modifications to apply.
+- `effects::Vector{Effect}`: Vector of parameter modifications to apply
 
-# Constructors
-
-## Direct container constructor
+# Constructor
 ```julia
-Npi(effects::AbstractVector{<:ParamEffect})
+Npi(effects::AbstractVector{<:Effect})
 ```
 
-# Examples
-
+# Example
+```julia
+trigger_on = ReactiveTrigger(5000.0, "H")
+trigger_off = ReactiveTrigger(1.0, "Rt")
+effect = ParamEffect(
+    :beta, x -> x .* 0.4, x -> x ./ 0.4, trigger_on, trigger_off)
+npi = Npi([effect])
+```
 """
 mutable struct Npi <: Event
     effects::Vector{Effect}

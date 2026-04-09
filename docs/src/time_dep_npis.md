@@ -5,7 +5,7 @@ CurrentModule = Daedalus
 
 # Time-dependent interventions
 
-`TimedNpi` interventions are responsive only to time, not epidemic state.
+Time-based interventions are triggered at specific simulation times, not by epidemic state.
 
 ### Single-Phase Example
 
@@ -13,13 +13,14 @@ CurrentModule = Daedalus
 using Daedalus
 using Plots
 
-# Simple lockdown: reduce transmission by 70% from day 15 to day 45
-timed_npi = Npi(
-    [TimedEffect(
-        :beta, x -> x .* 0.3, x -> x ./ 0.3,
-        30.0, 90.0
-    )]
+# Simple lockdown: reduce transmission by 70% from day 30 to day 90
+trigger_on = Daedalus.DaedalusStructs.TimeTrigger(30.0)
+trigger_off = Daedalus.DaedalusStructs.TimeTrigger(90.0)
+effect = Daedalus.DaedalusStructs.ParamEffect(
+    :beta, x -> x .* 0.3, x -> x ./ 0.3,
+    trigger_on, trigger_off
 )
+timed_npi = Daedalus.DaedalusStructs.Npi([effect])
 
 data = daedalus("Australia", "sars-cov-2 delta", npi=timed_npi, time_end=300.0);
 data_default = daedalus("Australia", "sars-cov-2 delta", time_end=300.0);
@@ -35,7 +36,7 @@ xlabel!("Time (days)")
 ylabel!("# exposed")
 ```
 
-### Multi-phased timed-NPI
+### Multi-phased time-based NPI
 
 Chain multiple intervention phases (e.g., lockdown → relaxation → second wave control):
 
@@ -43,18 +44,25 @@ Chain multiple intervention phases (e.g., lockdown → relaxation → second wav
 using Daedalus
 using Plots
 
-# Define three intervention phases
-timed_npi = Npi(
-    [TimedEffect(
-        :beta, x -> x .* 0.8, x -> x ./ 0.8, 60.0, 120.0
+# Define three intervention phases with different time windows
+effects = [
+    Daedalus.DaedalusStructs.ParamEffect(
+        :beta, x -> x .* 0.3, x -> x ./ 0.3,
+        Daedalus.DaedalusStructs.TimeTrigger(60.0),
+        Daedalus.DaedalusStructs.TimeTrigger(120.0)
     ),
-    TimedEffect(
-        :beta, x -> x .* 0.5, x -> x ./ 0.7, 130.0, 200.0
+    Daedalus.DaedalusStructs.ParamEffect(
+        :beta, x -> x .* 0.8, x -> x ./ 0.8,
+        Daedalus.DaedalusStructs.TimeTrigger(130.0),
+        Daedalus.DaedalusStructs.TimeTrigger(200.0)
     ),
-    TimedEffect(
-        :beta, x -> x .* 0.8, x -> x ./ 0.5, 210.0, 365.0
-    )]
-)
+    Daedalus.DaedalusStructs.ParamEffect(
+        :beta, x -> x .* 0.5, x -> x ./ 0.5,
+        Daedalus.DaedalusStructs.TimeTrigger(210.0),
+        Daedalus.DaedalusStructs.TimeTrigger(365.0)
+    )
+]
+timed_npi = Daedalus.DaedalusStructs.Npi(effects)
 
 data = daedalus("Australia", "sars-cov-2 delta", npi=timed_npi, time_end=400.0);
 data_default = daedalus("Australia", "sars-cov-2 delta", time_end=400.0);

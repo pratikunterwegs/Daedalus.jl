@@ -21,14 +21,12 @@ makedocs(;
     pages = [
         "Home" => "index.md",
         "Modelling parameter uncertainty" => "ensemble.md",
-        "Implementing interventions" => "npis.md",
         "Time-dependent interventions" => "time_dep_npis.md",
         "State-dependent interventions" => "state_dep_npis.md",
         "Multiple contact settings" => "settings.md",
         "Benchmarking" => "benchmarking.md",
         "Parallelisation" => "parallelisation.md",
         "Country and pathogen data" => "country_data.md",
-        "Implementing reactive events" => "musings.md",
         "Index" => "pkg_index.md",
         "Function Reference" => "reference.md"
     ]

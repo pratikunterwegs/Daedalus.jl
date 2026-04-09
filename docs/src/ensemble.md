@@ -94,12 +94,14 @@ Non-pharmaceutical interventions (NPIs) are applied consistently across all R0 v
 using Daedalus
 
 # Define a reactive NPI: reduce transmission by 50% when hospitalizations exceed 10,000
+trigger_on = Daedalus.DaedalusStructs.ReactiveTrigger(10000.0, "H")
+trigger_off = Daedalus.DaedalusStructs.ReactiveTrigger(1.0, "Rt")
 effect = Daedalus.DaedalusStructs.ParamEffect(
     :beta,
     x -> x .* 0.5,      # 50% reduction
-    x -> x ./ 0.5;      # reset: divide by 0.5
-    on = ("H", 10000.0),
-    off = ("Rt", 1.0)
+    x -> x ./ 0.5,      # reset: divide by 0.5
+    trigger_on,         # Activate when H > 10000
+    trigger_off         # Deactivate when Rt < 1.0
 )
 npi = Daedalus.DaedalusStructs.Npi([effect])
 

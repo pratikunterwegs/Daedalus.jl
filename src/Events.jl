@@ -15,13 +15,16 @@ export make_events, make_param_changer, make_param_reset,
 """
     make_param_changer(eff::Effect)::Function
 
-Create a callback function that modifies a parameter based on reactive state conditions.
+Create a callback function that modifies a parameter when activated.
+
+Handles both `ReactiveTrigger` (state-dependent) and `TimeTrigger` (time-based)
+activation.
 
 # Arguments
-- `eff::Effect`: A Effect with state-dependent trigger conditions
+- `eff::Effect`: Effect with trigger conditions
 
 # Returns
-A `Function` that takes an `integrator` and modifies the target parameter in-place
+A `Function` that modifies the target parameter in-place
 """
 function make_param_changer(eff::Effect)::Function
     effect! = function () end
@@ -54,13 +57,16 @@ end
 """
     make_param_reset(eff::Effect)::Function
 
-Create a callback function that resets a parameter based on reactive state conditions.
+Create a callback function that resets a parameter when deactivated.
+
+Handles both `ReactiveTrigger` (state-dependent) and `TimeTrigger` (time-based)
+deactivation.
 
 # Arguments
-- `eff::Effect`: A Effect with state-dependent trigger conditions
+- `eff::Effect`: Effect with trigger conditions
 
 # Returns
-A `Function` that takes an `integrator` and resets the target parameter in-place
+A `Function` that resets the target parameter in-place
 """
 function make_param_reset(eff::Effect)::Function
     effect! = function () end
@@ -96,17 +102,19 @@ end
 """
     make_save_events(eff::ParamEffect, savepoints)::Union{SavingCallback, Nothing}
 
-Create a SavingCallback for a single ParamEffect that records trigger compartment values.
+Create a SavingCallback for an effect that records trigger compartment values.
 
-Skips timed effects (returns nothing). For reactive effects, creates a callback that captures
-the values of the on/off trigger compartments at each savepoint.
+Skips effects with all `TimeTrigger` conditions (no state tracking needed).
+For effects with at least one `ReactiveTrigger`, captures trigger compartment
+values at each savepoint.
 
 # Arguments
-- `eff::ParamEffect`: An effect with trigger conditions
+- `eff::ParamEffect`: Effect with trigger conditions
 - `savepoints`: Time points at which to save state values
 
 # Returns
-A `SavingCallback` for reactive effects, or `nothing` for timed effects
+A `SavingCallback` for reactive effects, or `nothing` if both triggers are
+    time-based
 """
 function make_save_events(eff::ParamEffect, savepoints)
     # Skip if both triggers are time-based (this is a timed effect)
@@ -141,18 +149,17 @@ end
 """
     make_save_events(npi::Npi, savepoints)
 
-Create SavingCallbacks that record compartment values at specified timepoints.
+Create SavingCallbacks for all effects that require state tracking.
 
-Returns a vector of `SavingCallback`s, one per reactive effect. Each callback captures the
-values of that effect's on/off trigger compartments at each savepoint. Timed effects
-are skipped (they do not require state-based saving).
+Returns a vector of `SavingCallback`s, one per effect with at least one
+`ReactiveTrigger`. Effects with only `TimeTrigger` conditions are skipped.
 
 # Arguments
-- `npi::Npi`: Npi struct with a vector of effect specifications (both reactive and timed)
+- `npi::Npi`: Npi struct with effects
 - `savepoints`: Time points at which to save state values
 
 # Returns
-A `Vector{SavingCallback}` — one callback per reactive effect, each writing to `eff.saved_values`
+A `Vector{SavingCallback}` — one per effect that has reactive triggers
 """
 function make_save_events(npi::Npi, savepoints)
     cbset = []
@@ -165,6 +172,19 @@ function make_save_events(npi::Npi, savepoints)
     return cbset
 end
 
+"""
+    make_events(eff::ParamEffect, savepoints)::CallbackSet
+
+Create a CallbackSet for an effect's activation and deactivation callbacks.
+
+# Arguments
+- `eff::ParamEffect`: Effect with triggers
+- `savepoints`: Time points for state checking (used if trigger is 
+    `ReactiveTrigger`)
+
+# Returns
+A `CallbackSet` with on/off callbacks
+"""
 function make_events(eff::ParamEffect, savepoints)::CallbackSet
     affect_on! = make_param_changer(eff)
     affect_off! = make_param_reset(eff)
@@ -181,14 +201,14 @@ end
 """
     make_events(npi::Npi, savepoints)::CallbackSet
 
-Create a CallbackSet of event callbacks for an NPI containing both reactive and timed effects.
+Create a CallbackSet of callbacks for all effects in an NPI.
 
 # Arguments
-- `npi::Npi`: Npi struct with a vector of effect specifications
-- `savepoints`: Time points at which to check state for reactive effect triggers
+- `npi::Npi`: Npi struct with effects
+- `savepoints`: Time points for state checking (for reactive triggers)
 
 # Returns
-A `CallbackSet` with all on/off callbacks for all effects
+A `CallbackSet` with all activation/deactivation callbacks
 """
 function make_events(npi::Npi, savepoints)::CallbackSet
     cbset = CallbackSet()
