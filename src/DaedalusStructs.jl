@@ -75,7 +75,7 @@ independent trigger conditions for activation and deactivation.
 - `comp_on::StateData`: Trigger condition to activate this effect
 - `comp_off::StateData`: Trigger condition to deactivate this effect
 - `saved_values::SavedValues`: Historical state values for tracking this effect's triggers
-- `ison::Bool`: Current activation status for this effect
+- `is_on::Bool`: Current activation status for this effect
 
 # Constructors
 
