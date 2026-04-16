@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.0.10] - 20266-04-09
+### Added
+- Typed output format: `DaedalusOutput` struct wrapping ODE solutions with country, infection, and NPI metadata
+- Output analysis functions: `get_incidence()`, `get_epidemic_summary()`, `get_life_years_lost()`
+- Economic cost calculations: `get_costs()` for life value lost and economic impact
+- Extended `CountryData` with `gni`, `life_expectancy`, and `vsl` fields from WHO/World Bank data
+- Typed dispatch for `get_values()` and `get_times()` on `DaedalusOutput`
+
+### Changed (Breaking)
+- `daedalus()` now returns `DaedalusOutput` struct instead of bare `NamedTuple` (fields accessible via `.sol`, `.country`, `.infection`, etc.)
+- Ensemble runs return `Vector{DaedalusOutput}` instead of `Vector{NamedTuple}`
+
+## [0.0.10] - 2026-04-09
 
 ### Changed (Breaking)
 - Simplified public API by hiding internal trigger state representation:

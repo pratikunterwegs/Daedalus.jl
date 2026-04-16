@@ -372,5 +372,5 @@ function daedalus(
         nothing
     end
 
-    return (sol = ode_solution, saves = saved_vals, npi = npi)
+    return DaedalusOutput(ode_solution, saved_vals, npi, cd, infection, time_end)
 end

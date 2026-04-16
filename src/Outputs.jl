@@ -2,8 +2,9 @@
 module Outputs
 
 using ..Constants
+using DataFrames
 
-export get_values, get_times
+export get_values, get_times, get_incidence, get_epidemic_summary, get_life_years_lost
 
 """
     get_values(output, comp::String, timebin::Int=90)
@@ -92,6 +93,103 @@ for a daily-increment run).
 """
 function get_times(output)
     return unique(output.sol.t)
+end
+
+"""
+    get_incidence(output::DaedalusOutput)
+
+Compute daily incidence (new infections, hospitalisations, deaths) from a simulation.
+
+Returns a DataFrame with columns: time, measure, value
+"""
+function get_incidence(output)
+    sol = output.sol
+    tmax = maximum(sol.t)
+    times = 0:1:Int(round(tmax))
+
+    # Extract daily values
+    infections = Float64[]
+    hosp = Float64[]
+    deaths = Float64[]
+
+    for t in times
+        tidx = findfirst(x -> isapprox(x, t), sol.t)
+        if !isnothing(tidx)
+            u = sol.u[tidx]
+            inf_val = sum(u[get_indices("Is")]) + sum(u[get_indices("Ia")])
+            push!(infections, inf_val)
+            h_val = sum(u[get_indices("H")])
+            push!(hosp, h_val)
+            d_val = sum(u[get_indices("D")])
+            push!(deaths, d_val)
+        end
+    end
+
+    # Compute daily differences
+    inf_daily = diff(infections)
+    hosp_daily = diff(hosp)
+    death_daily = diff(deaths)
+
+    # Build DataFrame
+    n_times = length(times) - 1
+    times_vec = Vector(times[2:end])
+    measures = repeat(["infections", "hospitalisations", "deaths"], n_times)
+    values = vcat(inf_daily, hosp_daily, death_daily)
+    times_vec_rep = repeat(times_vec, 3)
+
+    return DataFrame(time = times_vec_rep, measure = measures, value = values)
+end
+
+"""
+    get_epidemic_summary(output::DaedalusOutput)
+
+Compute total epidemic summary (infections, hospitalisations, deaths).
+
+Returns a DataFrame with columns: measure, value
+"""
+function get_epidemic_summary(output)
+    sol = output.sol
+    u_final = sol.u[end]
+
+    # Final cumulative values
+    total_inf = sum(u_final[get_indices("E")]) + sum(u_final[get_indices("Is")]) +
+                sum(u_final[get_indices("Ia")]) + sum(u_final[get_indices("R")]) +
+                sum(u_final[get_indices("D")])
+    total_hosp = sum(u_final[get_indices("H")]) + sum(u_final[get_indices("R")]) +
+                 sum(u_final[get_indices("D")])
+    total_deaths = sum(u_final[get_indices("D")])
+
+    return DataFrame(
+        measure = ["infections", "hospitalisations", "deaths"],
+        value = [total_inf, total_hosp, total_deaths]
+    )
+end
+
+"""
+    get_life_years_lost(output::DaedalusOutput)
+
+Compute life-years lost due to deaths.
+
+Returns a NamedTuple with fields: total, by_age
+"""
+function get_life_years_lost(output)
+    sol = output.sol
+    u_final = sol.u[end]
+    u_initial = sol.u[1]
+
+    # Deaths per 4 age groups
+    d_idx = get_indices("D")
+    deaths_by_age = [
+        sum(u_final[d_idx[1:12]]) - sum(u_initial[d_idx[1:12]]),  # age group 1 (4 age + 45 econ * 2 vax)
+        sum(u_final[d_idx[13:24]]) - sum(u_initial[d_idx[13:24]]),
+        sum(u_final[d_idx[25:36]]) - sum(u_initial[d_idx[25:36]]),
+        sum(u_final[d_idx[37:49]]) - sum(u_initial[d_idx[37:49]])
+    ]
+
+    lyl_by_age = deaths_by_age .* output.country.life_expectancy
+    lyl_total = sum(lyl_by_age)
+
+    return (total = lyl_total, by_age = lyl_by_age)
 end
 
 end

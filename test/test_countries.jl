@@ -4,7 +4,7 @@
     # returned zeros, causing Inf in the scaled contact matrix.
     zero_worker_countries = [
         "Australia", "Belgium", "Brunei", "Cambodia", "Chile", "China",
-        "Costa Rica", "Cyprus", "Estonia", "Finland", "Hong Kong", "Iceland",
+        "Costa Rica", "Cyprus", "Estonia", "Finland", "Iceland",
         "Japan", "Kazakhstan", "Laos", "Latvia", "Luxembourg", "Malaysia",
         "Malta", "Mexico", "Morocco", "Myanmar", "New Zealand", "Portugal",
         "Romania", "Rwanda", "Singapore", "Slovenia", "Switzerland", "Tunisia"

@@ -105,7 +105,7 @@ function daedalus(country::Union{String, DataLoader.CountryData},
     ensemble_solution = daedalus_internal(
         length(r0_values), shared_data, param_sets, cb_set)
 
-    # Format results: Vector of NamedTuples, one per r0
+    # Format results: Vector of DaedalusOutput, one per infection
     results = []
     for i in eachindex(r0_values)
         saved_vals = if isnothing(npi)
@@ -116,8 +116,8 @@ function daedalus(country::Union{String, DataLoader.CountryData},
             nothing
         end
 
-        push!(results, (
-            sol = ensemble_solution[i], saves = saved_vals, npi = npi, r0 = r0_values[i]))
+        push!(results, DaedalusOutput(
+            ensemble_solution[i], saved_vals, npi, cd, infections[i], time_end))
     end
 
     return results

@@ -29,6 +29,9 @@ mutable struct CountryData
     workers::Vector{Int} # 45 economic sectors
     gva::Vector{Float64} # 45 sectors, million USD/day
     hospital_capacity::Float64 # spare pandemic hospital beds
+    gni::Float64 # GNI per capita PPP USD
+    life_expectancy::Vector{Float64} # 4 age groups
+    vsl::Vector{Float64} # value of statistical life, 4 age groups
 end
 
 """
@@ -349,6 +352,86 @@ function _aggregate_cm(cm16::Matrix{Float64}, pop16::Vector{Float64})::Matrix{Fl
     return cm4
 end
 
+# Load and aggregate life expectancy from CSV: average over sex, aggregate to 4 age groups
+function _load_life_expectancy()::Dict{String, Vector{Float64}}
+    df = CSV.read(joinpath(DATA_DIR, "life_expectancy.csv"), DataFrame)
+
+    # Extract relevant columns
+    countries = String.(df[!, Symbol("Location")])
+    sexes = String.(df[!, Symbol("Dim1")])
+    age_groups = String.(df[!, Symbol("Dim2")])
+    values = Float64.(df[!, Symbol("Value")])
+
+    # Group by country and age group, average over sex
+    result_dict = Dict{String, Dict{String, Float64}}()
+    for (i, row) in enumerate(eachrow(df))
+        country = String(row.Location)
+        age_group = String(row.Dim2)
+        value = Float64(row.Value)
+
+        if !haskey(result_dict, country)
+            result_dict[country] = Dict{String, Float64}()
+        end
+
+        if !haskey(result_dict[country], age_group)
+            result_dict[country][age_group] = 0.0
+        end
+        result_dict[country][age_group] += value
+    end
+
+    # Average over sex and aggregate to 4 age groups
+    agg_result = Dict{String, Vector{Float64}}()
+    for (country, age_dict) in result_dict
+        # Count how many entries per age group (should be 2: male, female)
+        age_counts = Dict(ag => 0 for ag in keys(age_dict))
+        for (country_inner, ad) in result_dict
+            if country_inner == country
+                for ag in keys(ad)
+                    age_counts[ag] = get(age_counts, ag, 0) + 1
+                end
+            end
+        end
+
+        # Recompute: average and aggregate to 4 groups
+        le_by_age = Dict{String, Vector{Float64}}()
+        # Aggregate: 0-4, 5-19, 20-64, 65+
+        group1 = Float64[]  # 0-4
+        group2 = Float64[]  # 5-19
+        group3 = Float64[]  # 20-64
+        group4 = Float64[]  # 65+
+
+        for (age_group, val_sum) in age_dict
+            # Determine which group this age belongs to
+            if lowercase(age_group) in ["<1 year", "0-4 years", "1-4 years"]
+                push!(group1, val_sum / 2)  # average over 2 sexes
+            elseif occursin(r"^[5-9]", age_group) || occursin(r"^[1][0-9]", age_group) || occursin(r"^20", age_group)
+                # 5-9, 10-14, 15-19, 20 (if exists)
+                if occursin(r"^20", age_group)
+                    # This might be 20-24
+                    push!(group3, val_sum / 2)
+                else
+                    # 5-19
+                    push!(group2, val_sum / 2)
+                end
+            elseif occursin(r"^[2-6][0-9]|^[56][0-9]", age_group) && !occursin(r"^65", age_group)
+                push!(group3, val_sum / 2)  # 20-64
+            elseif occursin(r"^65", age_group) || occursin(r"^7[0-9]", age_group) || occursin(r"^8[0-9]", age_group) || lowercase(age_group) == "85+ years"
+                push!(group4, val_sum / 2)  # 65+
+            end
+        end
+
+        le_4 = [
+            isempty(group1) ? 70.0 : mean(group1),
+            isempty(group2) ? 50.0 : mean(group2),
+            isempty(group3) ? 45.0 : mean(group3),
+            isempty(group4) ? 20.0 : mean(group4)
+        ]
+        agg_result[country] = le_4
+    end
+
+    return agg_result
+end
+
 function _load_countries()
     country_df = CSV.read(joinpath(DATA_DIR, "country_data.csv"), DataFrame)
     hosp_df = CSV.read(joinpath(DATA_DIR, "hospital_capacity.csv"), DataFrame)
@@ -359,6 +442,9 @@ function _load_countries()
     )
     # Ensure the country column is named "Country" (strip any leading whitespace)
     rename!(gva_df, first(names(gva_df)) => "Country")
+
+    # Load life expectancy
+    le_lookup = _load_life_expectancy()
 
     # Build hospital capacity lookup: country -> spare_capacity
     hosp_lookup = Dict{String, Float64}(
@@ -390,8 +476,8 @@ function _load_countries()
     for row in eachrow(country_df)
         cname = String(row.country)
 
-        # Skip countries without hospital or GVA data
-        (haskey(hosp_lookup, cname) && haskey(gva_lookup, cname)) || continue
+        # Skip countries without hospital, GVA, or life expectancy data
+        (haskey(hosp_lookup, cname) && haskey(gva_lookup, cname) && haskey(le_lookup, cname)) || continue
 
         # --- Demography: 21 five-year bins -> 4 DAEDALUS groups ---
         pop21 = Float64[row[Symbol(c)] for c in npop_cols]
@@ -437,7 +523,12 @@ function _load_countries()
         # --- GVA ---
         gva = gva_lookup[cname]
 
-        result[cname] = CountryData(demog4, cm4, workers45, gva, hosp_cap)
+        # --- GNI and life expectancy ---
+        gni = Float64(coalesce(row.gnipc, 0.0))
+        life_exp = le_lookup[cname]
+        vsl = life_exp .* gni
+
+        result[cname] = CountryData(demog4, cm4, workers45, gva, hosp_cap, gni, life_exp, vsl)
     end
 
     return result
