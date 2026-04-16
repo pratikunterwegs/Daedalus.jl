@@ -22,16 +22,14 @@ function get_costs(output)
     u_final = sol.u[end]
     u_initial = sol.u[1]
 
-    # Deaths by 4 age groups (indexed roughly: ages 0-4, 5-19, 20-64, 65+)
+    # Deaths by 4 age groups (ages 0-4, 5-19, 20-64, 65+)
     # State layout: N_VACCINE_STRATA * N_COMPARTMENTS * N_TOTAL_GROUPS
     # D compartment is at index 7 in epi compartments
     d_idx = get_indices("D")
 
     deaths_by_age = [
-        sum(u_final[d_idx[1:12]]) - sum(u_initial[d_idx[1:12]]),
-        sum(u_final[d_idx[13:24]]) - sum(u_initial[d_idx[13:24]]),
-        sum(u_final[d_idx[25:36]]) - sum(u_initial[d_idx[25:36]]),
-        sum(u_final[d_idx[37:49]]) - sum(u_initial[d_idx[37:49]])
+        sum(u_final[d_idx[get_age_group_indices(ag)]]) - sum(u_initial[d_idx[get_age_group_indices(ag)]])
+        for ag in 1:Constants.N_AGE_GROUPS
     ]
 
     # Life years lost = deaths * remaining life expectancy

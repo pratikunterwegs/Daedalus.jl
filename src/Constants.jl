@@ -4,9 +4,9 @@ module Constants
 
 export iS, iE, iIs, iIa, iH, iR, iD, N_COMPARTMENTS, COMPARTMENTS,
        i_AGE_GROUPS, i_WORKING_AGE, i_ECON_GROUPS,
-       N_AGE_GROUPS, N_ECON_GROUPS, N_TOTAL_GROUPS, N_VACCINE_STRATA,
+       N_AGE_GROUPS, N_ECON_GROUPS, N_TOTAL_GROUPS, N_VACCINE_STRATA, N_SEXES,
        i_UNVAX_STRATUM, i_VAX_STRATUM, i_rel_Rt, i_rel_Rt_cont,
-       get_indices
+       get_indices, get_age_group_indices
 
 const iS = 1
 const iE = 2
@@ -32,6 +32,8 @@ const i_VAX_STRATUM = 2
 
 const i_rel_Rt = 1
 const i_rel_Rt_cont = i_rel_Rt + 1
+
+const N_SEXES = 2  # Male and female for life expectancy data averaging
 
 # Maps compartment name → its 1-based block index in the state vector.
 # Avoids eval() in get_indices for fast, type-stable lookups.
@@ -88,6 +90,30 @@ function get_indices(
 
     isnothing(groups) && return comp_range
     return comp_range[groups]
+end
+
+"""
+    get_age_group_indices(age_group::Int)
+
+Return the indices within the N_TOTAL_GROUPS vector for a given age group (1-4).
+
+The 49-group vector is partitioned into 4 age groups:
+- Age group 1 (0-4 years): indices 1-12
+- Age group 2 (5-19 years): indices 13-24
+- Age group 3 (20-64 years): indices 25-36
+- Age group 4 (65+ years): indices 37-49
+
+# Arguments
+- `age_group`: Age group number (1-4)
+
+# Returns
+A `UnitRange{Int}` for the indices of that age group
+"""
+function get_age_group_indices(age_group::Int)
+    age_group < 1 || age_group > N_AGE_GROUPS && error("Age group must be 1-$(N_AGE_GROUPS)")
+    starts = [1, 13, 25, 37]
+    ends = [12, 24, 36, 49]
+    return starts[age_group]:ends[age_group]
 end
 
 end

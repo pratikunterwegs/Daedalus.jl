@@ -12,6 +12,8 @@ using CSV
 using DataFrames
 using Statistics
 
+using ..Constants
+
 const DATA_DIR = joinpath(@__DIR__, "data")
 
 """
@@ -403,20 +405,20 @@ function _load_life_expectancy()::Dict{String, Vector{Float64}}
         for (age_group, val_sum) in age_dict
             # Determine which group this age belongs to
             if lowercase(age_group) in ["<1 year", "0-4 years", "1-4 years"]
-                push!(group1, val_sum / 2)  # average over 2 sexes
+                push!(group1, val_sum / Constants.N_SEXES)  # average over sexes
             elseif occursin(r"^[5-9]", age_group) || occursin(r"^[1][0-9]", age_group) || occursin(r"^20", age_group)
                 # 5-9, 10-14, 15-19, 20 (if exists)
                 if occursin(r"^20", age_group)
                     # This might be 20-24
-                    push!(group3, val_sum / 2)
+                    push!(group3, val_sum / Constants.N_SEXES)
                 else
                     # 5-19
-                    push!(group2, val_sum / 2)
+                    push!(group2, val_sum / Constants.N_SEXES)
                 end
             elseif occursin(r"^[2-6][0-9]|^[56][0-9]", age_group) && !occursin(r"^65", age_group)
-                push!(group3, val_sum / 2)  # 20-64
+                push!(group3, val_sum / Constants.N_SEXES)  # 20-64
             elseif occursin(r"^65", age_group) || occursin(r"^7[0-9]", age_group) || occursin(r"^8[0-9]", age_group) || lowercase(age_group) == "85+ years"
-                push!(group4, val_sum / 2)  # 65+
+                push!(group4, val_sum / Constants.N_SEXES)  # 65+
             end
         end
 
@@ -462,7 +464,7 @@ function _load_countries()
     for r in eachrow(gva_df)
         cname = String(r.Country)
         vals = [_parse_gva(r[i]) for i in 2:ncol(gva_df)]
-        length(vals) == 45 && (gva_lookup[cname] = vals)
+        length(vals) == Constants.N_ECON_GROUPS && (gva_lookup[cname] = vals)
     end
 
     # Identify CM and population columns
