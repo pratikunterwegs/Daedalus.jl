@@ -27,10 +27,9 @@ function get_costs(output)
     # D compartment is at index 7 in epi compartments
     d_idx = get_indices("D")
 
-    deaths_by_age = [
-        sum(u_final[d_idx[get_age_group_indices(ag)]]) - sum(u_initial[d_idx[get_age_group_indices(ag)]])
-        for ag in 1:Constants.N_AGE_GROUPS
-    ]
+    deaths_by_age = [sum(u_final[d_idx[get_age_group_indices(ag)]]) -
+                     sum(u_initial[d_idx[get_age_group_indices(ag)]])
+                     for ag in 1:Constants.N_AGE_GROUPS]
 
     # Life years lost = deaths * remaining life expectancy
     lyl_by_age = deaths_by_age .* cd.life_expectancy
@@ -49,7 +48,8 @@ function get_costs(output)
         u_t = sol.u[t_step]
         # Sum Is across working-age population (age groups 3, economic groups 1-45)
         for eg in 1:Constants.N_ECON_GROUPS
-            state_idx = Constants.N_TOTAL_GROUPS * (Constants.iIs - 1) + Constants.N_AGE_GROUPS + eg
+            state_idx = Constants.N_TOTAL_GROUPS * (Constants.iIs - 1) +
+                        Constants.N_AGE_GROUPS + eg
             if 1 <= state_idx <= length(u_t)
                 is_val = u_t[state_idx]
                 gva_per_worker = cd.gva[eg] / max(cd.workers[eg], 1)

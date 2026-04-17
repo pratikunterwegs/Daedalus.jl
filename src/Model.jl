@@ -282,7 +282,8 @@ function daedalus(country::Union{String, DataLoader.CountryData}, infection::Str
         increment::Float64 = 1.0,
         n_threads::Int = 1)
     infection_data = DataLoader.get_pathogen(lowercase(infection))
-    return daedalus(country, infection_data; npi = npi, vaccination = vaccination, log_rt = log_rt,
+    return daedalus(
+        country, infection_data; npi = npi, vaccination = vaccination, log_rt = log_rt,
         time_end = time_end, increment = increment, n_threads = n_threads)
 end
 

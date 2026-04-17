@@ -406,7 +406,8 @@ function _load_life_expectancy()::Dict{String, Vector{Float64}}
             # Determine which group this age belongs to
             if lowercase(age_group) in ["<1 year", "0-4 years", "1-4 years"]
                 push!(group1, val_sum / Constants.N_SEXES)  # average over sexes
-            elseif occursin(r"^[5-9]", age_group) || occursin(r"^[1][0-9]", age_group) || occursin(r"^20", age_group)
+            elseif occursin(r"^[5-9]", age_group) || occursin(r"^[1][0-9]", age_group) ||
+                   occursin(r"^20", age_group)
                 # 5-9, 10-14, 15-19, 20 (if exists)
                 if occursin(r"^20", age_group)
                     # This might be 20-24
@@ -415,9 +416,11 @@ function _load_life_expectancy()::Dict{String, Vector{Float64}}
                     # 5-19
                     push!(group2, val_sum / Constants.N_SEXES)
                 end
-            elseif occursin(r"^[2-6][0-9]|^[56][0-9]", age_group) && !occursin(r"^65", age_group)
+            elseif occursin(r"^[2-6][0-9]|^[56][0-9]", age_group) &&
+                   !occursin(r"^65", age_group)
                 push!(group3, val_sum / Constants.N_SEXES)  # 20-64
-            elseif occursin(r"^65", age_group) || occursin(r"^7[0-9]", age_group) || occursin(r"^8[0-9]", age_group) || lowercase(age_group) == "85+ years"
+            elseif occursin(r"^65", age_group) || occursin(r"^7[0-9]", age_group) ||
+                   occursin(r"^8[0-9]", age_group) || lowercase(age_group) == "85+ years"
                 push!(group4, val_sum / Constants.N_SEXES)  # 65+
             end
         end
@@ -479,7 +482,8 @@ function _load_countries()
         cname = String(row.country)
 
         # Skip countries without hospital, GVA, or life expectancy data
-        (haskey(hosp_lookup, cname) && haskey(gva_lookup, cname) && haskey(le_lookup, cname)) || continue
+        (haskey(hosp_lookup, cname) && haskey(gva_lookup, cname) &&
+         haskey(le_lookup, cname)) || continue
 
         # --- Demography: 21 five-year bins -> 4 DAEDALUS groups ---
         pop21 = Float64[row[Symbol(c)] for c in npop_cols]
@@ -530,7 +534,8 @@ function _load_countries()
         life_exp = le_lookup[cname]
         vsl = life_exp .* gni
 
-        result[cname] = CountryData(demog4, cm4, workers45, gva, hosp_cap, gni, life_exp, vsl)
+        result[cname] = CountryData(
+            demog4, cm4, workers45, gva, hosp_cap, gni, life_exp, vsl)
     end
 
     return result

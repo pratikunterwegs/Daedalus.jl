@@ -121,8 +121,9 @@ function daedalus(country::Union{String, DataLoader.CountryData},
              for eff in ev.effects if isa(eff, ParamEffect)]
         end
 
-        push!(results, DaedalusOutput(
-            ensemble_solution[i], saved_vals, all_events, cd, infections[i], time_end))
+        push!(results,
+            DaedalusOutput(
+                ensemble_solution[i], saved_vals, all_events, cd, infections[i], time_end))
     end
 
     return results

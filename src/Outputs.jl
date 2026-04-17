@@ -133,7 +133,8 @@ function get_incidence(output)
     # Build DataFrame
     n_times = length(times) - 1
     times_vec = Vector(times[2:end])
-    measures = vcat([repeat([m], n_times) for m in ["infections", "hospitalisations", "deaths"]]...)
+    measures = vcat([repeat([m], n_times)
+                     for m in ["infections", "hospitalisations", "deaths"]]...)
     values = vcat(inf_daily, hosp_daily, death_daily)
     times_vec_rep = vcat([times_vec for _ in 1:3]...)
 
@@ -179,10 +180,9 @@ function get_life_years_lost(output)
 
     # Deaths per 4 age groups (ages 0-4, 5-19, 20-64, 65+)
     d_idx = get_indices("D")
-    deaths_by_age = [
-        sum(u_final[d_idx[get_age_group_indices(ag)]]) - sum(u_initial[d_idx[get_age_group_indices(ag)]])
-        for ag in 1:Constants.N_AGE_GROUPS
-    ]
+    deaths_by_age = [sum(u_final[d_idx[get_age_group_indices(ag)]]) -
+                     sum(u_initial[d_idx[get_age_group_indices(ag)]])
+                     for ag in 1:Constants.N_AGE_GROUPS]
 
     lyl_by_age = deaths_by_age .* output.country.life_expectancy
     lyl_total = sum(lyl_by_age)

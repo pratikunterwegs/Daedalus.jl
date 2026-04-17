@@ -190,7 +190,8 @@ end
 
     @testset "n_threads=1 default for scalar" begin
         # When using scalar infection, n_threads parameter should be ignored (no effect)
-        result = Daedalus.daedalus("Canada", make_infection("sars-cov-2 delta", 1.5), time_end = 10.0, n_threads = 4)
+        result = Daedalus.daedalus(
+            "Canada", make_infection("sars-cov-2 delta", 1.5), time_end = 10.0, n_threads = 4)
 
         # Should still return single result, not vector
         @test isa(result, NamedTuple)

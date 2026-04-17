@@ -36,8 +36,8 @@ npi = create_time_intervention(:gamma_H, x -> x .* 0.8, start=20.0, end_time=60.
 ```
 """
 function create_time_intervention(target::Symbol, reduction::Function;
-                                   start::Float64, end_time::Float64,
-                                   reset_func::Union{Function, Nothing} = nothing)
+        start::Float64, end_time::Float64,
+        reset_func::Union{Function, Nothing} = nothing)
     # For common multiplicative patterns, auto-compute the inverse
     if isnothing(reset_func)
         reset_func = x -> x  # Default no-op if not provided
@@ -83,9 +83,9 @@ npi = create_reactive_intervention(:beta, x -> x .* 0.5,
 ```
 """
 function create_reactive_intervention(target::Symbol, reduction::Function;
-                                      on_threshold::Float64, off_threshold::Float64,
-                                      compartment::String = "H",
-                                      reset_func::Union{Function, Nothing} = nothing)
+        on_threshold::Float64, off_threshold::Float64,
+        compartment::String = "H",
+        reset_func::Union{Function, Nothing} = nothing)
     if isnothing(reset_func)
         reset_func = x -> x  # Default no-op if not provided
     end
@@ -126,7 +126,7 @@ npi = create_multi_intervention(reductions, start=20.0, end_time=90.0)
 ```
 """
 function create_multi_intervention(reductions::Dict{Symbol, Function};
-                                   start::Float64, end_time::Float64)
+        start::Float64, end_time::Float64)
     trigger_on = TimeTrigger(start)
     trigger_off = TimeTrigger(end_time)
 

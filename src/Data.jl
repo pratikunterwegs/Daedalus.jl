@@ -78,7 +78,6 @@ function consumer_worker_contacts(demography; scaled = true)::Matrix{Float64}
     return ccw
 end
 
-
 """
     prepare_demog(demog, workers)::Vector{Float64}
 
@@ -111,8 +110,6 @@ Rt callback). This matches the `+1` padding applied in `initial_state`.
 function prepare_demog(cd::CountryData)
     return prepare_demog(cd.demography, max.(cd.workers, 1))
 end
-
-
 
 """
     expand_contacts(cm::Matrix{Float64})::Matrix{Float64}
@@ -252,7 +249,6 @@ function get_settings(cd::CountryData)::Int
     isa(cd.contact_matrix, Vector) ? length(cd.contact_matrix) + 1 : 2
 end
 
-
 """
     initial_state(cd::CountryData) -> Array{Float64,3}
 
@@ -310,7 +306,6 @@ Get contact matrices for a named country. Delegates to `prepare_contacts(cd)`.
 function prepare_contacts(country::String; scaled = true)
     prepare_contacts(DataLoader.get_country(country); scaled = scaled)
 end
-
 
 """
     worker_contacts(country::String; scaled=true) -> SVector

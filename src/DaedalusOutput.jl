@@ -13,11 +13,11 @@ input parameters, and events.
 - `time_end`: Simulation duration in days (`Float64`)
 """
 struct DaedalusOutput
-    sol                # ODESolution
-    saves              # Union{Nothing, Vector{SavedValues}}
-    events             # Vector{Event}
-    country            # CountryData
-    infection          # InfectionData
+    sol::Any                # ODESolution
+    saves::Any              # Union{Nothing, Vector{SavedValues}}
+    events::Any             # Vector{Event}
+    country::Any            # CountryData
+    infection::Any          # InfectionData
     time_end::Float64
 end
 

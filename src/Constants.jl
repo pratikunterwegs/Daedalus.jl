@@ -22,7 +22,7 @@ const N_COMPARTMENTS = 9
 const N_DATA_COMPARTMENTS = 2
 const N_PRIMARY_COMPARTMENTS = N_COMPARTMENTS - N_DATA_COMPARTMENTS
 
-const COMPARTMENTS = ["S", "E", "Is", "Ia", "H", "R", "D", "new_inf", 
+const COMPARTMENTS = ["S", "E", "Is", "Ia", "H", "R", "D", "new_inf",
     "new_hosp", "new_vax"]
 const PRIMARY_COMPARTMENTS = COMPARTMENTS[1:N_PRIMARY_COMPARTMENTS]
 
@@ -82,7 +82,8 @@ function get_indices(
         groups::Union{Nothing, Int, AbstractVector{Int}, UnitRange{Int}} = nothing
 )
     if compartment == "Rt"
-        return N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA + N_TOTAL_GROUPS + i_rel_Rt
+        return N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA + N_TOTAL_GROUPS +
+               i_rel_Rt
     end
 
     if compartment == "vax"
@@ -132,7 +133,8 @@ The 49-group vector is partitioned into 4 age groups:
 A `UnitRange{Int}` for the indices of that age group
 """
 function get_age_group_indices(age_group::Int)
-    age_group < 1 || age_group > N_AGE_GROUPS && error("Age group must be 1-$(N_AGE_GROUPS)")
+    age_group < 1 ||
+        age_group > N_AGE_GROUPS && error("Age group must be 1-$(N_AGE_GROUPS)")
     starts = [1, 13, 25, 37]
     ends = [12, 24, 36, 49]
     return starts[age_group]:ends[age_group]
