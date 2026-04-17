@@ -6,12 +6,17 @@ Tests basic functionality and structure without checking numerical correctness.
 using Daedalus
 using Test
 
+# Helper to create infection with custom r0
+function make_infection(pathogen_name::String, r0_value::Float64)
+    inf = Daedalus.DataLoader.get_pathogen(pathogen_name)
+    inf.r0 = r0_value
+    return inf
+end
+
 @testset "Multi-run infection parameter support" begin
     @testset "Scalar infection returns single result" begin
         # Scalar infection should return a single NamedTuple, not a vector
-        infection = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
-        infection.r0 = 1.5
-        result = Daedalus.daedalus("Canada", infection, time_end = 10.0)
+        result = Daedalus.daedalus("Canada", make_infection("sars-cov-2 delta", 1.5), time_end = 10.0)
 
         @test isa(result, NamedTuple)
         @test haskey(result, :sol)
@@ -23,13 +28,10 @@ using Test
     @testset "Vector infection returns vector of results" begin
         # Vector infection should return a Vector of NamedTuples
         infections = [
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta"),
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta"),
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+            make_infection("sars-cov-2 delta", 1.0),
+            make_infection("sars-cov-2 delta", 1.5),
+            make_infection("sars-cov-2 delta", 2.0)
         ]
-        infections[1].r0 = 1.0
-        infections[2].r0 = 1.5
-        infections[3].r0 = 2.0
         results = Daedalus.daedalus("Canada", infections, time_end = 10.0)
 
         @test isa(results, Vector)
@@ -48,11 +50,9 @@ using Test
 
     @testset "Single-element infection vector matches scalar" begin
         # A vector with one element should behave like vector
-        infection_scalar = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
-        infection_scalar.r0 = 1.5
+        infection_scalar = make_infection("sars-cov-2 delta", 1.5)
 
-        infections_vector = [Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")]
-        infections_vector[1].r0 = 1.5
+        infections_vector = [make_infection("sars-cov-2 delta", 1.5)]
 
         result_scalar = Daedalus.daedalus("Canada", infection_scalar, time_end = 10.0)
         results_vector = Daedalus.daedalus("Canada", infections_vector, time_end = 10.0)
@@ -69,11 +69,9 @@ using Test
     @testset "Different r0 values produce different results" begin
         # Different r0 values should produce different ODE solutions
         infections = [
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta"),
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+            make_infection("sars-cov-2 delta", 1.0),
+            make_infection("sars-cov-2 delta", 3.0)
         ]
-        infections[1].r0 = 1.0
-        infections[2].r0 = 3.0
         results = Daedalus.daedalus("Canada", infections, time_end = 50.0)
 
         @test length(results) == 2
@@ -90,13 +88,10 @@ using Test
     @testset "Time dimension consistency" begin
         # All runs should have same number of timepoints
         infections = [
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta"),
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta"),
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+            make_infection("sars-cov-2 delta", 1.0),
+            make_infection("sars-cov-2 delta", 2.0),
+            make_infection("sars-cov-2 delta", 3.0)
         ]
-        infections[1].r0 = 1.0
-        infections[2].r0 = 2.0
-        infections[3].r0 = 3.0
         time_end = 30.0
         increment = 1.0
 
@@ -117,13 +112,10 @@ end
     @testset "Serial execution (n_threads=1)" begin
         # With n_threads=1, should execute serially without error
         infections = [
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta"),
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta"),
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+            make_infection("sars-cov-2 delta", 1.0),
+            make_infection("sars-cov-2 delta", 1.5),
+            make_infection("sars-cov-2 delta", 2.0)
         ]
-        infections[1].r0 = 1.0
-        infections[2].r0 = 1.5
-        infections[3].r0 = 2.0
         results = Daedalus.daedalus(
             "Canada", infections, time_end = 10.0, n_threads = 1
         )
@@ -140,13 +132,10 @@ end
     @testset "Multi-threaded execution (n_threads>1)" begin
         # With n_threads>1, should execute with threads without error
         infections = [
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta"),
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta"),
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+            make_infection("sars-cov-2 delta", 1.0),
+            make_infection("sars-cov-2 delta", 1.5),
+            make_infection("sars-cov-2 delta", 2.0)
         ]
-        infections[1].r0 = 1.0
-        infections[2].r0 = 1.5
-        infections[3].r0 = 2.0
         n_threads_use = min(4, Threads.nthreads())  # Use up to 4 threads, but not more than available
 
         results = Daedalus.daedalus(
@@ -165,13 +154,10 @@ end
     @testset "Serial and multi-threaded produce consistent results" begin
         # Results should be identical regardless of threading
         infections_serial = [
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta"),
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta"),
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+            make_infection("sars-cov-2 delta", 1.0),
+            make_infection("sars-cov-2 delta", 1.5),
+            make_infection("sars-cov-2 delta", 2.0)
         ]
-        infections_serial[1].r0 = 1.0
-        infections_serial[2].r0 = 1.5
-        infections_serial[3].r0 = 2.0
 
         results_serial = Daedalus.daedalus(
             "Canada", infections_serial, time_end = 10.0, n_threads = 1
@@ -180,13 +166,10 @@ end
         n_threads_use = min(2, Threads.nthreads())
         if n_threads_use > 1
             infections_threaded = [
-                Daedalus.DataLoader.get_pathogen("sars-cov-2 delta"),
-                Daedalus.DataLoader.get_pathogen("sars-cov-2 delta"),
-                Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+                make_infection("sars-cov-2 delta", 1.0),
+                make_infection("sars-cov-2 delta", 1.5),
+                make_infection("sars-cov-2 delta", 2.0)
             ]
-            infections_threaded[1].r0 = 1.0
-            infections_threaded[2].r0 = 1.5
-            infections_threaded[3].r0 = 2.0
 
             results_threaded = Daedalus.daedalus(
                 "Canada", infections_threaded, time_end = 10.0, n_threads = n_threads_use
@@ -207,9 +190,7 @@ end
 
     @testset "n_threads=1 default for scalar" begin
         # When using scalar infection, n_threads parameter should be ignored (no effect)
-        infection = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
-        infection.r0 = 1.5
-        result = Daedalus.daedalus("Canada", infection, time_end = 10.0, n_threads = 4)
+        result = Daedalus.daedalus("Canada", make_infection("sars-cov-2 delta", 1.5), time_end = 10.0, n_threads = 4)
 
         # Should still return single result, not vector
         @test isa(result, NamedTuple)
@@ -228,10 +209,7 @@ end
     @testset "Large infection vector" begin
         # Should handle moderate-sized parameter sweeps
         r0_vals = collect(1.0:0.5:10.0)  # 19 values
-        infections = [Daedalus.DataLoader.get_pathogen("sars-cov-2 delta") for _ in r0_vals]
-        for (i, r0) in enumerate(r0_vals)
-            infections[i].r0 = r0
-        end
+        infections = [make_infection("sars-cov-2 delta", r0) for r0 in r0_vals]
         results = Daedalus.daedalus("Canada", infections, time_end = 5.0)
 
         @test length(results) == length(r0_vals)
@@ -245,11 +223,9 @@ end
     @testset "Very small time_end" begin
         # Should handle very short simulation times
         infections = [
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta"),
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+            make_infection("sars-cov-2 delta", 1.0),
+            make_infection("sars-cov-2 delta", 2.0)
         ]
-        infections[1].r0 = 1.0
-        infections[2].r0 = 2.0
         results = Daedalus.daedalus("Canada", infections, time_end = 1.0)
 
         @test length(results) == 2
@@ -262,17 +238,13 @@ end
     @testset "Different countries with vector infection" begin
         # Should work with different country data
         countries = ["Australia", "United Kingdom"]
-        infections_template = [
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta"),
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta"),
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
-        ]
 
         for country_name in countries
-            infections = [Daedalus.DataLoader.get_pathogen("sars-cov-2 delta") for _ in 1:3]
-            infections[1].r0 = 1.0
-            infections[2].r0 = 2.0
-            infections[3].r0 = 3.0
+            infections = [
+                make_infection("sars-cov-2 delta", 1.0),
+                make_infection("sars-cov-2 delta", 2.0),
+                make_infection("sars-cov-2 delta", 3.0)
+            ]
             results = Daedalus.daedalus(country_name, infections, time_end = 5.0)
             @test length(results) == 3
         end
@@ -282,10 +254,7 @@ end
 @testset "Parameter preservation" begin
     @testset "r0 values are correctly stored in results" begin
         r0_vals = [1.2, 2.3, 3.4]
-        infections = [Daedalus.DataLoader.get_pathogen("sars-cov-2 delta") for _ in r0_vals]
-        for (i, r0) in enumerate(r0_vals)
-            infections[i].r0 = r0
-        end
+        infections = [make_infection("sars-cov-2 delta", r0) for r0 in r0_vals]
         results = Daedalus.daedalus("Canada", infections, time_end = 10.0)
 
         for (i, result) in enumerate(results)
@@ -295,11 +264,9 @@ end
 
     @testset "Other parameters are shared across runs" begin
         infections = [
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta"),
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+            make_infection("sars-cov-2 delta", 1.0),
+            make_infection("sars-cov-2 delta", 2.0)
         ]
-        infections[1].r0 = 1.0
-        infections[2].r0 = 2.0
         results = Daedalus.daedalus(
             "Canada",
             infections,
@@ -317,11 +284,9 @@ end
 @testset "Solution structure" begin
     @testset "Each solution has valid ODE output" begin
         infections = [
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta"),
-            Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+            make_infection("sars-cov-2 delta", 1.0),
+            make_infection("sars-cov-2 delta", 2.0)
         ]
-        infections[1].r0 = 1.0
-        infections[2].r0 = 2.0
         results = Daedalus.daedalus("Canada", infections, time_end = 15.0)
 
         for result in results
@@ -341,8 +306,7 @@ end
 
     @testset "Solutions have correct state dimension" begin
         # State: N_COMPARTMENTS * N_TOTAL_GROUPS * N_VACCINE_STRATA + N_TOTAL_GROUPS + 1 (Rt)
-        infections = [Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")]
-        infections[1].r0 = 1.0
+        infections = [make_infection("sars-cov-2 delta", 1.0)]
         results = Daedalus.daedalus("Canada", infections, time_end = 10.0)
 
         state = results[1].sol.u[1]

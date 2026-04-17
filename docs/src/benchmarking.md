@@ -101,15 +101,11 @@ effects = [
 ]
 timed_npi = Daedalus.DaedalusStructs.Npi(effects)
 
-infection_te = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
-infection_te.r0 = 3.0
-@benchmark daedalus("Australia", infection_te, npi=timed_npi, time_end=600.0)
+@benchmark daedalus("Australia", "sars-cov-2 delta", npi=timed_npi, time_end=600.0)
 ```
 
 Timed events do not need $R_t$ logging and can be benchmarked without it.
 
 ```@example benchmarking_timed_event
-infection_te2 = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
-infection_te2.r0 = 3.0
-@benchmark daedalus("Australia", infection_te2, npi=timed_npi, time_end=600.0, log_rt=false)
+@benchmark daedalus("Australia", "sars-cov-2 delta", npi=timed_npi, time_end=600.0, log_rt=false)
 ```

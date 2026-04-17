@@ -78,11 +78,11 @@ npi = Daedalus.DaedalusStructs.Npi([npi_effect])
 
 # Vaccination starts after lockdown begins
 vaccination = Daedalus.DaedalusStructs.Vaccination(
-    start_time = 80.0,
-    rate = 0.0015,      # 0.15% per day during lockdown
-    uptake_limit = 0.75,
-    efficacy = 0.85,
-    waning_period = 365.0
+    80.0,       # start_time: day 80
+    0.0015,     # rate: 0.15% per day during lockdown
+    0.75,       # uptake_limit: 75% maximum coverage
+    0.85,       # efficacy: 85% effective
+    365.0       # waning_period: immunity wanes after 1 year
 )
 
 # Run with both interventions
@@ -114,7 +114,7 @@ After a simulation with vaccination, extract key metrics for analysis:
 
 ```julia
 # Get all vaccination events used
-vax_events = Daedalus.DaedalusOutput.get_vaccination(result)
+vax_events = Daedalus.get_vaccination(result)
 
 # Check if a specific vaccination campaign was active
 if !isempty(vax_events)
