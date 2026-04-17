@@ -274,15 +274,15 @@ function make_events(vax::DaedalusStructs.Vaccination, savepoints)::CallbackSet
     end
     cb_start = PresetTimeCallback([vax.start_time], start_affect!)
 
+    idx_vaxxed = get_indices("vax")
+
     # Saturation callback: fires at savepoints to check if coverage limit reached
     saturation_affect! = function (integrator)
         if vax.ison
-            # Sum all living vaccinated individuals (all compartments except dead in stratum 2)
-            u_3d = reshape(@view(integrator.u[1:integrator.p.size_state]),
-                           (Constants.N_TOTAL_GROUPS, Constants.N_COMPARTMENTS, Constants.N_VACCINE_STRATA))
-            vax_pop = sum(@view u_3d[:, 1:(Constants.N_COMPARTMENTS - 1), Constants.i_VAX_STRATUM])
+            # sum all vaccinated including dead
+            vax_pop = sum(@view integrator.u[idx_vaxxed])
             total_pop = sum(integrator.p.demography)
-            coverage = total_pop > 0 ? vax_pop / total_pop : 0.0
+            coverage = vax_pop / total_pop
 
             if coverage >= vax.uptake_limit
                 integrator.p.nu = 0.0

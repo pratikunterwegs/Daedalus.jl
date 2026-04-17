@@ -19,7 +19,8 @@ A `Vaccination` event tracks and controls:
 
 ## Simple Vaccination Campaign
 
-Create a basic vaccination campaign and observe its effect on disease dynamics:
+The example below shows a day-1 vaccination campaign to show the effect of vaccination.
+Vaccination campaigns starting later have less impact as there are fewer susceptibles remaining.
 
 ```@example basic_vaccination
 using Daedalus
@@ -29,8 +30,8 @@ using Plots
 infection = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
 
 vaccination = Daedalus.DaedalusStructs.Vaccination(
-    100.0,    # Start at day 100
-    0.001,          # Vaccinate 0.1% of population per day
+    1.0,    # Start on day 1
+    0.01,          # Vaccinate 1% of population per day
     0.8,    # Up to 80% will accept vaccine
     0.9,        # 90% effective against transmission
     365.0  # Protection lasts ~1 year
@@ -38,21 +39,21 @@ vaccination = Daedalus.DaedalusStructs.Vaccination(
 
 # Run simulation with vaccination
 data_with_vax = daedalus("Australia", infection, 
-    vaccination=vaccination, time_end=500.0);
+    vaccination=vaccination, time_end=100.0);
 
 # Run baseline without vaccination for comparison
-data_no_vax = daedalus("Australia", infection, time_end=500.0);
+data_no_vax = daedalus("Australia", infection, time_end=100.0);
 
 # Extract incidence and plot
 times = Daedalus.Outputs.get_times(data_with_vax)
-incidence_vax = Daedalus.Outputs.get_incidence(data_with_vax)
-incidence_no_vax = Daedalus.Outputs.get_incidence(data_no_vax)
+exposed_vax = Daedalus.Outputs.get_values(data_with_vax, "E", 1)
+exposed_no_vax = Daedalus.Outputs.get_values(data_no_vax, "E", 1)
 
-plot(times, incidence_vax, label="With vaccination", linewidth=2)
-plot!(times, incidence_no_vax, label="No vaccination", linewidth=2)
+plot(times, exposed_vax, label="With vaccination")
+plot!(times, exposed_no_vax, label="No vaccination")
 xlabel!("Time (days)")
-ylabel!("Daily incidence")
-title!("Impact of Vaccination on Disease Incidence")
+ylabel!("# exposed")
+title!("Vaccination impact")
 ```
 
 ## Combining Vaccination with NPIs
@@ -95,46 +96,6 @@ rt = Daedalus.Outputs.get_values(result, "Rt", 1)
 p1 = plot(times, incidence, label="Incidence", ylabel="Daily cases", legend=:topright)
 p2 = plot(times, rt, label="Rt", ylabel="Reproduction number", legend=:topright)
 plot(p1, p2, layout=(2,1), xlabel="Time (days)")
-```
-
-## Multiple Vaccination Phases
-
-Model realistic multi-phase vaccination rollouts (e.g., healthcare workers first, then general population):
-
-```@example multi_phase_vaccination
-using Daedalus
-
-infection = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
-
-# Phase 1: Slow healthcare worker vaccination (day 50-100)
-vaccination_phase1 = Daedalus.DaedalusStructs.Vaccination(
-    start_time = 50.0,
-    rate = 0.0005,    # 0.05% per day (slow, targeted)
-    uptake_limit = 0.2, # Only 20% of population (HCWs)
-    efficacy = 0.95,
-    waning_period = 365.0
-)
-
-# Phase 2: Accelerated general population vaccination (day 100+)
-vaccination_phase2 = Daedalus.DaedalusStructs.Vaccination(
-    start_time = 100.0,
-    rate = 0.002,     # 0.2% per day (faster)
-    uptake_limit = 0.7, # Up to 70% total
-    efficacy = 0.85,  # Slightly lower efficacy in general population
-    waning_period = 365.0
-)
-
-# Run with both vaccination phases
-result = daedalus("Australia", infection, 
-                 vaccination=[vaccination_phase1, vaccination_phase2],
-                 time_end=500.0)
-
-# Access the vaccination events from the result
-vax_events = Daedalus.DaedalusOutput.get_vaccination(result)
-println("Number of vaccination phases: $(length(vax_events))")
-for (i, vax) in enumerate(vax_events)
-    println("Phase $i: starts at day $(vax.start_time), efficacy $(vax.efficacy)")
-end
 ```
 
 ## Understanding Vaccination Dynamics

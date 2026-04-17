@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documentation: Comprehensive long-form guides for Event system, Vaccination campaigns, and NPI helper functions
 - ODE state vector expansion: new_vax tracking (49 elements for cumulative new vaccinations per demographic group) inserted between compartments and Rt
 - Vaccination coverage calculation: updated saturation check to use total living vaccinated population (all compartments except dead) instead of vaccinated-S only
+- Data compartments: `newI` (cumulative new infections) and `newH` (cumulative new hospitalisations) tracking per demographic group, integrated in ODE derivative
+- `get_incidence()` function: now reads directly from `newI`/`newH` data compartments for exact daily flow rates instead of approximating via stock differencing
 
 ### Changed (Breaking)
 - `daedalus()` now returns `DaedalusOutput` struct instead of bare `NamedTuple` (fields accessible via `.sol`, `.country`, `.infection`, `.events`, etc.)

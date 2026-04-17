@@ -2,7 +2,7 @@
 
 module Constants
 
-export iS, iE, iIs, iIa, iH, iR, iD, N_COMPARTMENTS, COMPARTMENTS,
+export iS, iE, iIs, iIa, iH, iR, iD, inewI, inewH, N_COMPARTMENTS, COMPARTMENTS,
        i_AGE_GROUPS, i_WORKING_AGE, i_ECON_GROUPS,
        N_AGE_GROUPS, N_ECON_GROUPS, N_TOTAL_GROUPS, N_VACCINE_STRATA, N_SEXES,
        i_UNVAX_STRATUM, i_VAX_STRATUM, i_rel_Rt, i_rel_Rt_cont,
@@ -15,10 +15,16 @@ const iIa = 4
 const iH = 5
 const iR = 6
 const iD = 7
+const inewI = 8
+const inewH = 9
 
-const N_COMPARTMENTS = 7
+const N_COMPARTMENTS = 9
+const N_DATA_COMPARTMENTS = 2
+const N_PRIMARY_COMPARTMENTS = N_COMPARTMENTS - N_DATA_COMPARTMENTS
 
-const COMPARTMENTS = ["S", "E", "Is", "Ia", "H", "R", "D", "new_vax"]
+const COMPARTMENTS = ["S", "E", "Is", "Ia", "H", "R", "D", "new_inf", 
+    "new_hosp", "new_vax"]
+const PRIMARY_COMPARTMENTS = COMPARTMENTS[1:N_PRIMARY_COMPARTMENTS]
 
 const i_AGE_GROUPS = 1:4
 const i_WORKING_AGE = 3
@@ -44,7 +50,9 @@ const COMPARTMENT_INDICES = Dict{String, Int}(
     "Ia" => iIa,
     "H" => iH,
     "R" => iR,
-    "D" => iD
+    "D" => iD,
+    "new_inf" => inewI,
+    "new_hosp" => inewH
 )
 
 """
@@ -75,6 +83,13 @@ function get_indices(
 )
     if compartment == "Rt"
         return N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA + N_TOTAL_GROUPS + i_rel_Rt
+    end
+
+    if compartment == "vax"
+        start = N_TOTAL_GROUPS * N_COMPARTMENTS + 1
+        vax_range = start:((start - 1) * 2)
+        isnothing(groups) && return vax_range
+        return vax_range[groups]
     end
 
     if compartment == "new_vax"

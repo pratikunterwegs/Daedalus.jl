@@ -340,7 +340,7 @@ end
     end
 
     @testset "Solutions have correct state dimension" begin
-        # State should have N_COMPARTMENTS * N_TOTAL_GROUPS * N_VACCINE_STRATA + 1 (for Rt)
+        # State: N_COMPARTMENTS * N_TOTAL_GROUPS * N_VACCINE_STRATA + N_TOTAL_GROUPS + 1 (Rt)
         infections = [Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")]
         infections[1].r0 = 1.0
         results = Daedalus.daedalus("Canada", infections, time_end = 10.0)
@@ -348,7 +348,8 @@ end
         state = results[1].sol.u[1]
         expected_dim = Daedalus.Constants.N_COMPARTMENTS *
                        Daedalus.Constants.N_TOTAL_GROUPS *
-                       Daedalus.Constants.N_VACCINE_STRATA + 1
+                       Daedalus.Constants.N_VACCINE_STRATA +
+                       Daedalus.Constants.N_TOTAL_GROUPS + 1
 
         @test length(state) == expected_dim
     end

@@ -301,6 +301,9 @@ end
 Construct the initial epidemic state (N_TOTAL_GROUPS × N_COMPARTMENTS ×
 N_VACCINE_STRATA) for a country given as a [`DataLoader.CountryData`](@ref)
 struct. A fraction `1e-6` of each group is seeded as symptomatic infectious.
+
+The state has 9 compartments: 7 primary epidemiological (S, E, Is, Ia, H, R, D)
+and 2 data tracking (newI, newH for cumulative infections and hospitalisations).
 """
 function initial_state(cd::CountryData)
     demography = cd.demography

@@ -14,21 +14,23 @@ using StaticArrays
 
 Compute derivatives for the DAEDALUS epidemic ODE system.
 
-The core compartmental model with 7 compartments (S, E, Is, Ia, H, R, D) across
-49 demographic groups (4 age groups + 45 economic sectors) and 2 vaccine strata.
-Implements force-of-infection, disease progression, vaccination, and death.
+The core compartmental model with 9 compartments (7 primary: S, E, Is, Ia, H, R, D;
+2 data: newI, newH) across 49 demographic groups (4 age + 45 economic sectors)
+and 2 vaccine strata. Implements force-of-infection, disease progression, vaccination,
+and death.
 
 # Arguments
 - `du::Array`: Pre-allocated output array (derivatives), same shape as `u`
-- `u::Array`: State vector (length = N_TOTAL_GROUPS × N_COMPARTMENTS × N_VACCINE_STRATA + 1)
+- `u::Array`: State vector (length = N_TOTAL_GROUPS × N_COMPARTMENTS × N_VACCINE_STRATA + new_vax + Rt)
 - `p::Params`: Parameter struct containing contact matrices, rates, and NGM
 - `t::Number`: Current simulation time
 
 # State layout
-The state array is reshaped internally as (49, 7, 2) where:
+The state array is reshaped internally as (49, 9, 2) where:
 - Dimension 1: Demographic groups (4 age + 45 economic sectors)
-- Dimension 2: Compartments (S, E, Is, Ia, H, R, D)
+- Dimension 2: Compartments (S, E, Is, Ia, H, R, D, newI, newH) — last 2 are cumulative data
 - Dimension 3: Vaccine strata (unvaccinated, vaccinated)
+- new_vax block: Cumulative new vaccinations per group
 - Final element: Effective reproduction number Rt (updated by callbacks)
 
 # Details
@@ -117,6 +119,12 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
 
     # change in dead
     @. dD = p.omega .* H
+
+    # Track cumulative new infections and new hospitalisations (data compartments)
+    dnewI = @view dU[:, inewI, :]
+    @. dnewI = new_I
+    dnewH = @view dU[:, inewH, :]
+    @. dnewH = p.eta .* Is
 
     # Track cumulative new vaccinations per group (matches C++ t_new_vax)
     new_vax_view = @view du[(p.size_state + 1):(p.size_state + N_TOTAL_GROUPS)]

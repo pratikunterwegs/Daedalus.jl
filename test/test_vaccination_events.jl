@@ -93,12 +93,12 @@
 
         # State vector should be expanded to include new_vax tracking (49 elements)
         state_size = length(result.sol.u[end])
-        @test state_size == 736  # 686 compartments + 49 new_vax + 1 Rt
+        @test state_size == 932  # 882 compartments (49×9×2) + 49 new_vax + 1 Rt
 
         # new_vax should be accessible via get_indices
         new_vax_idx = Constants.get_indices("new_vax")
         @test length(new_vax_idx) == 49
-        @test new_vax_idx == 687:735
+        @test new_vax_idx == 883:931
 
         # new_vax values should be monotonically increasing (cumulative)
         new_vax_initial = result.sol.u[1][new_vax_idx]
