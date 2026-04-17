@@ -308,9 +308,9 @@ end
             log_rt = true
         )
 
-        # All runs should share the same npi
-        @test results[1].npi === results[2].npi
-        @test isnothing(results[1].npi)
+        # All runs should have the same events
+        @test results[1].events === results[2].events
+        @test isempty(results[1].events)
     end
 end
 

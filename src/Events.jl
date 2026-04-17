@@ -173,6 +173,30 @@ function make_save_events(npi::Npi, savepoints)
 end
 
 """
+    make_save_events(events::Vector{Event}, savepoints)
+
+Create SavingCallbacks for all events that require state tracking.
+
+Only Npi events produce save callbacks; Vaccination events do not.
+
+# Arguments
+- `events::Vector{Event}`: Vector of events
+- `savepoints`: Time points at which to save state values
+
+# Returns
+A `Vector{SavingCallback}` for all reactive effects in Npi events
+"""
+function make_save_events(events::Vector{DaedalusStructs.Event}, savepoints)
+    cbset = []
+    for ev in events
+        if isa(ev, DaedalusStructs.Npi)
+            append!(cbset, make_save_events(ev, savepoints))
+        end
+    end
+    return cbset
+end
+
+"""
     make_events(eff::ParamEffect, savepoints)::CallbackSet
 
 Create a CallbackSet for an effect's activation and deactivation callbacks.
@@ -220,6 +244,78 @@ function make_events(npi::Npi, savepoints)::CallbackSet
         cbset = CallbackSet(cbset, cbset_eff)
     end
 
+    return cbset
+end
+
+"""
+    make_events(vax::Vaccination, savepoints)::CallbackSet
+
+Create a CallbackSet for vaccination campaign callbacks.
+
+Generates two callbacks:
+1. Start callback: fires at vax.start_time, sets nu and psi parameters
+2. Saturation callback: fires at savepoints, stops vaccination when coverage limit reached
+
+# Arguments
+- `vax::Vaccination`: Vaccination event with parameters
+- `savepoints`: Time points for checking coverage saturation
+
+# Returns
+A `CallbackSet` with start and saturation callbacks
+"""
+function make_events(vax::DaedalusStructs.Vaccination, savepoints)::CallbackSet
+    # Start callback: fires once at vaccination start time
+    start_affect! = function (integrator)
+        if !vax.ison
+            vax.ison = true
+            integrator.p.nu = vax.rate
+            integrator.p.psi = 1.0 / vax.waning_period
+        end
+    end
+    cb_start = PresetTimeCallback([vax.start_time], start_affect!)
+
+    # Saturation callback: fires at savepoints to check if coverage limit reached
+    saturation_affect! = function (integrator)
+        if vax.ison
+            # Vaccinated susceptibles are at stratum 2 offset
+            idx_S_unvax = Constants.get_indices("S")
+            idx_S_vax = idx_S_unvax .+ (Constants.N_TOTAL_GROUPS * Constants.N_COMPARTMENTS)
+
+            vax_pop = sum(@view integrator.u[idx_S_vax])
+            total_pop = sum(integrator.p.demography)
+            coverage = total_pop > 0 ? vax_pop / total_pop : 0.0
+
+            if coverage >= vax.uptake_limit
+                integrator.p.nu = 0.0
+            end
+        end
+    end
+    cb_sat = PresetTimeCallback(savepoints, saturation_affect!)
+
+    return CallbackSet(cb_start, cb_sat)
+end
+
+"""
+    make_events(events::Vector{Event}, savepoints)::CallbackSet
+
+Create a unified CallbackSet for all events (NPI and Vaccination).
+
+# Arguments
+- `events::Vector{Event}`: Vector containing Npi and/or Vaccination events
+- `savepoints`: Time points for state checking
+
+# Returns
+A `CallbackSet` combining all event callbacks
+"""
+function make_events(events::Vector{DaedalusStructs.Event}, savepoints)::CallbackSet
+    cbset = CallbackSet()
+    for ev in events
+        if isa(ev, DaedalusStructs.Npi)
+            cbset = CallbackSet(cbset, make_events(ev::DaedalusStructs.Npi, savepoints))
+        elseif isa(ev, DaedalusStructs.Vaccination)
+            cbset = CallbackSet(cbset, make_events(ev::DaedalusStructs.Vaccination, savepoints))
+        end
+    end
     return cbset
 end
 

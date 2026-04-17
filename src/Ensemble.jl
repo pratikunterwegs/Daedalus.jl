@@ -29,6 +29,7 @@ A `Vector{NamedTuple}` where each element contains:
 function daedalus(country::Union{String, DataLoader.CountryData},
         infections::Vector{DataLoader.InfectionData};
         npi::Union{Npi, Nothing} = nothing,
+        vaccination::Union{Vaccination, Nothing} = nothing,
         log_rt::Bool = true,
         time_end::Float64 = 100.0,
         increment::Float64 = 1.0,
@@ -82,22 +83,27 @@ function daedalus(country::Union{String, DataLoader.CountryData},
         push!(param_sets, params)
     end
 
+    # Build unified event vector
+    all_events::Vector{DaedalusStructs.Event} = DaedalusStructs.Event[]
+    !isnothing(npi) && push!(all_events, npi)
+    !isnothing(vaccination) && push!(all_events, vaccination)
+
     # Build callback set
     savepoints = shared_data.savepoints
-    if isnothing(npi)
+    if isempty(all_events)
         cb_set = CallbackSet()
         if log_rt
             rt_logger = make_rt_logger(savepoints)
             cb_set = CallbackSet(rt_logger)
         end
-    elseif isa(npi, Npi)
-        save_events = make_save_events(npi, savepoints)
-        events = make_events(npi, savepoints)
+    else
+        event_cbs = make_events(all_events, savepoints)
+        save_cbs = make_save_events(all_events, savepoints)
         if log_rt
             rt_logger = make_rt_logger(savepoints)
-            cb_set = CallbackSet(events, save_events..., rt_logger)
+            cb_set = CallbackSet(event_cbs, save_cbs..., rt_logger)
         else
-            cb_set = CallbackSet(events, save_events...)
+            cb_set = CallbackSet(event_cbs, save_cbs...)
         end
     end
 
@@ -108,16 +114,15 @@ function daedalus(country::Union{String, DataLoader.CountryData},
     # Format results: Vector of DaedalusOutput, one per infection
     results = []
     for i in eachindex(r0_values)
-        saved_vals = if isnothing(npi)
+        saved_vals = if isempty(all_events)
             nothing
-        elseif isa(npi, Npi)
-            [eff.saved_values for eff in npi.effects if isa(eff, ParamEffect)]
         else
-            nothing
+            [eff.saved_values for ev in all_events if isa(ev, Npi)
+             for eff in ev.effects if isa(eff, ParamEffect)]
         end
 
         push!(results, DaedalusOutput(
-            ensemble_solution[i], saved_vals, npi, cd, infections[i], time_end))
+            ensemble_solution[i], saved_vals, all_events, cd, infections[i], time_end))
     end
 
     return results

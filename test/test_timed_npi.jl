@@ -89,7 +89,7 @@ end
         )
 
         @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
-        @test result.npi === npi
+        @test npi === first(Daedalus.get_npi(result))
         @test !isnothing(result.saves)  # Reactive NPI has saved values
     end
 
@@ -102,7 +102,7 @@ end
         )
 
         @test result.sol.retcode == OrdinaryDiffEq.ReturnCode.Success
-        @test isnothing(result.npi)
+        @test isempty(Daedalus.get_npi(result))
         @test isnothing(result.saves)
     end
 end

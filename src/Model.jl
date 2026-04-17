@@ -276,12 +276,13 @@ end
 # Method 1: String pathogen name - fetch and delegate to InfectionData method
 function daedalus(country::Union{String, DataLoader.CountryData}, infection::String;
         npi::Union{Npi, Nothing} = nothing,
+        vaccination::Union{Vaccination, Nothing} = nothing,
         log_rt::Bool = true,
         time_end::Float64 = 100.0,
         increment::Float64 = 1.0,
         n_threads::Int = 1)
     infection_data = DataLoader.get_pathogen(lowercase(infection))
-    return daedalus(country, infection_data; npi = npi, log_rt = log_rt,
+    return daedalus(country, infection_data; npi = npi, vaccination = vaccination, log_rt = log_rt,
         time_end = time_end, increment = increment, n_threads = n_threads)
 end
 
@@ -289,6 +290,7 @@ end
 function daedalus(
         country::Union{String, DataLoader.CountryData}, infection::DataLoader.InfectionData;
         npi::Union{Npi, Nothing} = nothing,
+        vaccination::Union{Vaccination, Nothing} = nothing,
         log_rt::Bool = true,
         time_end::Float64 = 100.0,
         increment::Float64 = 1.0,
@@ -338,22 +340,27 @@ function daedalus(
         inf_params.gamma_H, inf_params.nu, psi, size
     )
 
+    # Build unified event vector
+    all_events::Vector{DaedalusStructs.Event} = DaedalusStructs.Event[]
+    !isnothing(npi) && push!(all_events, npi)
+    !isnothing(vaccination) && push!(all_events, vaccination)
+
     # Build callback set
     savepoints = shared_data.savepoints
-    if isnothing(npi)
+    if isempty(all_events)
         cb_set = CallbackSet()
         if log_rt
             rt_logger = make_rt_logger(savepoints)
             cb_set = CallbackSet(rt_logger)
         end
-    elseif isa(npi, Npi)
-        save_events = make_save_events(npi, savepoints)
-        events = make_events(npi, savepoints)
+    else
+        event_cbs = make_events(all_events, savepoints)
+        save_cbs = make_save_events(all_events, savepoints)
         if log_rt
             rt_logger = make_rt_logger(savepoints)
-            cb_set = CallbackSet(events, save_events..., rt_logger)
+            cb_set = CallbackSet(event_cbs, save_cbs..., rt_logger)
         else
-            cb_set = CallbackSet(events, save_events...)
+            cb_set = CallbackSet(event_cbs, save_cbs...)
         end
     end
 
@@ -363,14 +370,12 @@ function daedalus(
     )
     ode_solution = solve(ode_problem, callback = cb_set, saveat = savepoints)
 
-    saved_vals = if isnothing(npi)
+    saved_vals = if isempty(all_events)
         nothing
-    elseif isa(npi, Npi)
-        # TODO: write fn to extract saves
-        [eff.saved_values for eff in npi.effects if isa(eff, ParamEffect)]
     else
-        nothing
+        [eff.saved_values for ev in all_events if isa(ev, Npi)
+         for eff in ev.effects if isa(eff, ParamEffect)]
     end
 
-    return DaedalusOutput(ode_solution, saved_vals, npi, cd, infection, time_end)
+    return DaedalusOutput(ode_solution, saved_vals, all_events, cd, infection, time_end)
 end

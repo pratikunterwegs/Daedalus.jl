@@ -8,15 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Typed output format: `DaedalusOutput` struct wrapping ODE solutions with country, infection, and NPI metadata
+- Event hierarchy: `abstract type Event` with concrete types `Npi` and `Vaccination` for composable model interventions
+- `Vaccination <: Event` type: generates ODE callbacks to dynamically modify `nu` (vaccination rate) and `psi` (waning rate) during solve
+- Unified event callback generation: `make_events(events::Vector{Event})` for combining NPI and vaccination effects
+- `DaedalusOutput` field `events::Vector{Event}` replacing separate `npi` + `vaccination` fields for unified event handling
+- Accessor functions: `get_npi(output)` and `get_vaccination(output)` to extract events from output
+- Vaccination mechanics: saturation callback stops vaccination when coverage reaches uptake limit
+- Typed output format: `DaedalusOutput` struct wrapping ODE solutions with country, infection, and events metadata
 - Output analysis functions: `get_incidence()`, `get_epidemic_summary()`, `get_life_years_lost()`
 - Economic cost calculations: `get_costs()` for life value lost and economic impact
 - Extended `CountryData` with `gni`, `life_expectancy`, and `vsl` fields from WHO/World Bank data
 - Typed dispatch for `get_values()` and `get_times()` on `DaedalusOutput`
+- NPI helper convenience functions: `create_time_intervention()`, `create_reactive_intervention()`, `create_multi_intervention()`
+- Documentation: Comprehensive long-form guides for Event system, Vaccination campaigns, and NPI helper functions
 
 ### Changed (Breaking)
-- `daedalus()` now returns `DaedalusOutput` struct instead of bare `NamedTuple` (fields accessible via `.sol`, `.country`, `.infection`, etc.)
+- `daedalus()` now returns `DaedalusOutput` struct instead of bare `NamedTuple` (fields accessible via `.sol`, `.country`, `.infection`, `.events`, etc.)
+- `daedalus()` signature: `vaccination::Union{Vaccination, Nothing}` replaces `vaccination::Union{DataLoader.VaccinationScenario, Nothing}`
 - Ensemble runs return `Vector{DaedalusOutput}` instead of `Vector{NamedTuple}`
+- `DaedalusOutput` field `events::Vector{Event}` — use `get_npi()` and `get_vaccination()` accessor functions instead of direct `.npi` access
 
 ## [0.0.10] - 2026-04-09
 

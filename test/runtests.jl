@@ -16,6 +16,12 @@ using Test
     # Include time-limited NPI tests
     include("test_timed_npi.jl")
 
+    # Include NPI helper tests
+    include("test_npi_helpers.jl")
+
+    # Include vaccination event tests
+    include("test_vaccination_events.jl")
+
     # Include output processing tests
     include("test_outputs.jl")
 

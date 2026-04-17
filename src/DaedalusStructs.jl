@@ -5,7 +5,7 @@ using ..Constants
 
 using DiffEqCallbacks
 
-export Params, Npi, Effect, ParamEffect, Trigger, ReactiveTrigger, TimeTrigger
+export Params, Npi, Vaccination, Effect, ParamEffect, Trigger, ReactiveTrigger, TimeTrigger
 
 """
     Params
@@ -161,6 +161,33 @@ mutable struct Npi <: Event
 
     function Npi(effects::Vector{<:Effect})
         return new(Vector{Effect}(effects))
+    end
+end
+
+"""
+    Vaccination
+
+An event type that generates vaccination callbacks for the ODE solver.
+Modifies `nu` (vaccination rate) and `psi` (waning rate) parameters dynamically.
+
+# Fields
+- `start_time::Float64`: Day vaccination campaign begins
+- `rate::Float64`: Fraction of population vaccinated per day
+- `uptake_limit::Float64`: Maximum coverage fraction (0-1) before campaign stops
+- `efficacy::Float64`: Vaccine efficacy (stored for analysis; affects psi in ODE)
+- `waning_period::Float64`: Days until vaccine wanes (sets `psi = 1/waning_period`)
+- `ison::Bool`: Whether campaign is currently active (internal state)
+"""
+mutable struct Vaccination <: Event
+    start_time::Float64
+    rate::Float64
+    uptake_limit::Float64
+    efficacy::Float64
+    waning_period::Float64
+    ison::Bool
+
+    function Vaccination(start_time, rate, uptake_limit, efficacy, waning_period)
+        return new(start_time, rate, uptake_limit, efficacy, waning_period, false)
     end
 end
 
