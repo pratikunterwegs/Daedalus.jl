@@ -118,6 +118,10 @@ function daedalus_ode!(du::Array, u::Array, p::Params, t::Number)
     # change in dead
     @. dD = p.omega .* H
 
+    # Track cumulative new vaccinations per group (matches C++ t_new_vax)
+    new_vax_view = @view du[(p.size_state + 1):(p.size_state + N_TOTAL_GROUPS)]
+    @. new_vax_view = nu_eff * new_Svax + nu_eff * new_Rvax
+
     # Rt is updated by callbacks; keep its derivative zero between updates
     du[end] = 0.0
 end

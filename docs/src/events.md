@@ -2,9 +2,10 @@
 CurrentModule = Daedalus
 ```
 
-# The Event System
+# Implementing interventions using Daedalus Event types
 
-Daedalus.jl uses a unified **Event** framework for managing interventions and campaigns during epidemics. Both non-pharmaceutical interventions (NPIs) and vaccination campaigns are modeled as Event types, making them composable and extensible.
+Daedalus.jl uses a unified **Event** framework for managing interventions and campaigns during epidemics.
+Both non-pharmaceutical interventions (NPIs) and vaccination campaigns are modeled as Event types, making them composable and extensible.
 
 ## Event Types
 
@@ -13,7 +14,7 @@ All events inherit from an abstract `Event` base type. Currently, two concrete e
 ### Npi (Non-Pharmaceutical Interventions)
 
 `Npi` represents policy-based or behavioral interventions that modify epidemiological parameters. Each `Npi` contains one or more `ParamEffect` objects, each specifying:
-- Which parameter to modify (e.g., `:beta` for transmission, `:omega` for recovery)
+- Which parameter to modify (e.g., `:beta` for transmission)
 - How to modify it (transformation function)
 - When to activate and deactivate (via `Trigger` conditions)
 
@@ -40,18 +41,19 @@ npi = Daedalus.DaedalusStructs.Npi([effect])
 
 # Create a vaccination campaign
 vaccination = Daedalus.DaedalusStructs.Vaccination(
-    start_time = 50.0,    # begins at day 50
-    rate = 0.001,         # 0.1% of population per day
-    uptake_limit = 0.7,   # max 70% willing to be vaccinated
-    efficacy = 0.9,       # 90% effective
-    waning_period = 365.0 # immunity wanes after 1 year
+    50.0,    # begins at day 50
+    0.001,         # 0.1% of population per day
+    0.7,   # max 70% willing to be vaccinated
+    0.9,       # 90% effective
+    365.0 # immunity wanes after 1 year
 )
 
 # Run with both NPI and vaccination
-result = daedalus("Australia", infection, npi=npi, vaccination=vaccination, time_end=300.0);
+result = daedalus("Australia", infection, npi=npi, 
+    vaccination=vaccination, time_end=300.0);
 
-times = Daedalus.Outputs.get_times(result)
-exposed = Daedalus.Outputs.get_values(result, "E", 1)
+times = Daedalus.Outputs.get_times(result);
+exposed = Daedalus.Outputs.get_values(result, "E", 1);
 
 plot(times, exposed, label="Exposed", linewidth=2)
 xlabel!("Time (days)")
@@ -59,35 +61,14 @@ ylabel!("# Exposed")
 title!("Epidemic with NPI and Vaccination")
 ```
 
-## Extracting Events from Results
+## Extracting events from results
 
 The `DaedalusOutput` object contains all events that were active during the simulation in its `.events` field. Use accessor functions to retrieve specific event types:
 
 ```julia
 # Get all NPIs from the result
-npis = Daedalus.DaedalusOutput.get_npi(result)
+npis = Daedalus.DaedalusOutput.get_npi(result);
 
 # Get all vaccination campaigns
 vaccines = Daedalus.DaedalusOutput.get_vaccination(result)
-
-# Check what was applied
-if !isempty(npis)
-    println("NPIs were active during simulation")
-end
-
-if !isempty(vaccines)
-    println("Vaccination campaign was active")
-    vax = vaccines[1]
-    println("Campaign efficacy: $(vax.efficacy)")
-end
 ```
-
-## Advanced: Custom Event Types
-
-The Event framework is designed to be extensible. While `Npi` and `Vaccination` are the provided implementations, users can create new Event subtypes by:
-
-1. Defining a new struct that inherits from `Event`
-2. Implementing event-specific callback generation logic
-3. Integrating with the `make_events()` function
-
-This allows for future additions such as behavioral change campaigns, seasonal effect modeling, or other dynamic interventions.

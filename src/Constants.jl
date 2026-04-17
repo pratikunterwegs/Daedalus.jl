@@ -18,7 +18,7 @@ const iD = 7
 
 const N_COMPARTMENTS = 7
 
-const COMPARTMENTS = ["S", "E", "Is", "Ia", "H", "R", "D"]
+const COMPARTMENTS = ["S", "E", "Is", "Ia", "H", "R", "D", "new_vax"]
 
 const i_AGE_GROUPS = 1:4
 const i_WORKING_AGE = 3
@@ -74,7 +74,14 @@ function get_indices(
         groups::Union{Nothing, Int, AbstractVector{Int}, UnitRange{Int}} = nothing
 )
     if compartment == "Rt"
-        return N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA + i_rel_Rt
+        return N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA + N_TOTAL_GROUPS + i_rel_Rt
+    end
+
+    if compartment == "new_vax"
+        start = N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA + 1
+        new_vax_range = start:(start + N_TOTAL_GROUPS - 1)
+        isnothing(groups) && return new_vax_range
+        return new_vax_range[groups]
     end
 
     if compartment == "I"

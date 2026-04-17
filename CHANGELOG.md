@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Typed dispatch for `get_values()` and `get_times()` on `DaedalusOutput`
 - NPI helper convenience functions: `create_time_intervention()`, `create_reactive_intervention()`, `create_multi_intervention()`
 - Documentation: Comprehensive long-form guides for Event system, Vaccination campaigns, and NPI helper functions
+- ODE state vector expansion: new_vax tracking (49 elements for cumulative new vaccinations per demographic group) inserted between compartments and Rt
+- Vaccination coverage calculation: updated saturation check to use total living vaccinated population (all compartments except dead) instead of vaccinated-S only
 
 ### Changed (Breaking)
 - `daedalus()` now returns `DaedalusOutput` struct instead of bare `NamedTuple` (fields accessible via `.sol`, `.country`, `.infection`, `.events`, etc.)

@@ -4,7 +4,8 @@ CurrentModule = Daedalus
 
 # Vaccination Campaigns
 
-Vaccination is modeled as a first-class **Event** type in Daedalus.jl. Unlike simple data objects, `Vaccination` events actively generate ODE callbacks that modify epidemiological parameters during the simulation.
+Vaccination is modeled as a first-class **Event** type in Daedalus.jl.
+`Vaccination` events generate ODE callbacks that modify epidemiological parameters during the simulation.
 
 ## Basic Vaccination Model
 
@@ -28,18 +29,19 @@ using Plots
 infection = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
 
 vaccination = Daedalus.DaedalusStructs.Vaccination(
-    start_time = 100.0,    # Start at day 100
-    rate = 0.001,          # Vaccinate 0.1% of population per day
-    uptake_limit = 0.8,    # Up to 80% will accept vaccine
-    efficacy = 0.9,        # 90% effective against transmission
-    waning_period = 365.0  # Protection lasts ~1 year
+    100.0,    # Start at day 100
+    0.001,          # Vaccinate 0.1% of population per day
+    0.8,    # Up to 80% will accept vaccine
+    0.9,        # 90% effective against transmission
+    365.0  # Protection lasts ~1 year
 )
 
 # Run simulation with vaccination
-data_with_vax = daedalus("Australia", infection, vaccination=vaccination, time_end=500.0)
+data_with_vax = daedalus("Australia", infection, 
+    vaccination=vaccination, time_end=500.0);
 
 # Run baseline without vaccination for comparison
-data_no_vax = daedalus("Australia", infection, time_end=500.0)
+data_no_vax = daedalus("Australia", infection, time_end=500.0);
 
 # Extract incidence and plot
 times = Daedalus.Outputs.get_times(data_with_vax)
