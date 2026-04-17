@@ -133,9 +133,9 @@ function get_incidence(output)
     # Build DataFrame
     n_times = length(times) - 1
     times_vec = Vector(times[2:end])
-    measures = repeat(["infections", "hospitalisations", "deaths"], n_times)
+    measures = vcat([repeat([m], n_times) for m in ["infections", "hospitalisations", "deaths"]]...)
     values = vcat(inf_daily, hosp_daily, death_daily)
-    times_vec_rep = repeat(times_vec, 3)
+    times_vec_rep = vcat([times_vec for _ in 1:3]...)
 
     return DataFrame(time = times_vec_rep, measure = measures, value = values)
 end
