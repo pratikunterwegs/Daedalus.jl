@@ -183,10 +183,6 @@ function prepare_shared_data(
     # All of these are expensive and independent of infection parameters
     init_state = initial_state(cd)
 
-    # add new_vax tracking and Rt compartment at end
-    init_state = reshape(init_state, length(init_state))
-    init_state = [init_state; zeros(N_TOTAL_GROUPS); 0.0]
-
     contacts_unscaled = total_contacts(prepare_contacts(cd; scaled = false))
     cw = worker_contacts(cd)
     contacts_array = contacts3d(cd)

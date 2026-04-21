@@ -12,37 +12,22 @@ export prepare_contacts, contacts3d, get_settings, total_contacts,
        prepare_demog, initial_state
 
 """
-    worker_contacts(workers; scaled=true)::Vector{Float64}
+    worker_contacts(cd::CountryData; scaled=true) -> SVector
 
-Get per-capita social contacts within each economic sector.
+Get per-capita social contacts within each economic sector from `cd`.
+Sectors with zero workers are treated as having 1 worker
+to avoid division by zero.
 
 Data sourced from `sectorcontacts.csv` via `DataLoader`. When `scaled=true`
 (default), values are divided element-wise by sector workforce counts so that
 the result is contacts per worker (as used in the ODE force-of-infection).
 
 # Arguments
-- `workers`: Worker counts for each of the 45 economic sectors
+- `cd`: Used to access worker counts for each of the 45 economic sectors
 - `scaled::Bool`: If true (default), contacts are divided by worker counts
 
 # Returns
 A `Vector{Float64}` of length 45 with per-capita within-sector contact rates
-"""
-function worker_contacts(workers; scaled = true)::Vector{Float64}
-    x = Vector{Float64}(DataLoader.get_economic_contacts().contacts_workplace)
-
-    if scaled
-        x = x ./ workers
-    end
-
-    return x
-end
-
-"""
-    worker_contacts(cd::CountryData; scaled=true) -> SVector
-
-Get per-capita social contacts within each economic sector using workforce
-counts from `cd`. Sectors with zero workers are treated as having 1 worker
-to avoid division by zero.
 """
 function worker_contacts(cd::CountryData; scaled = true)
     x = Vector{Float64}(DataLoader.get_economic_contacts().contacts_workplace)
@@ -53,33 +38,7 @@ function worker_contacts(cd::CountryData; scaled = true)
 end
 
 """
-    consumer_worker_contacts(demography; scaled=true)::Matrix{Float64}
-
-Get the consumer-worker contact matrix (45 sectors × 4 age groups).
-
-Represents contacts between consumer-sector workers and age groups.
-
-# Arguments
-- `demography::Vector{Float64}`: Population vector for 4 age groups
-- `scaled::Bool`: If true (default), contacts are scaled by age-group demographics
-
-# Returns
-A `Matrix{Float64}` of size (45, 4) with consumer-worker contact rates
-"""
-function consumer_worker_contacts(demography; scaled = true)::Matrix{Float64}
-    ccw = repeat([1.0], N_ECON_GROUPS * N_AGE_GROUPS)
-    ccw = reshape(ccw, N_ECON_GROUPS, N_AGE_GROUPS)
-
-    # colwise div by size of from groups
-    if scaled
-        ccw *= Diagonal(1 ./ demography[i_AGE_GROUPS])
-    end
-
-    return ccw
-end
-
-"""
-    prepare_demog(demog, workers)::Vector{Float64}
+    prepare_demog(cd::CountryData) -> Vector
 
 Get a 49-element population vector for all age-groups and economic sectors.
 
@@ -87,28 +46,42 @@ Concatenates 4 age groups with 45 economic sector worker counts to form the
 population vector used in force-of-infection calculations.
 
 # Arguments
-- `demog::Vector{Float64}`: Demographics (4 age groups)
-- `workers::Vector{Int}`: Worker counts (45 economic sectors)
+- `cd::CountryData` - gives the country data
 
 # Returns
 A `Vector{Float64}` of length 49 (4 age groups + 45 workers)
 """
-function prepare_demog(demog, workers)::Vector{Float64}
-    return [demog; workers]
+function prepare_demog(cd::CountryData)
+    return [cd.demography; max.(cd.workers, 1.0)] # prevent zero division
 end
 
 """
-    prepare_demog(cd::CountryData) -> Vector
+    consumer_worker_contacts(demography; scaled=true)::Matrix{Float64}
 
-Get the 49-element population vector (4 age groups + 45 worker sectors) for
-any country from a [`DataLoader.CountryData`](@ref) struct.
+Get the consumer-worker contact matrix (45 sectors × 4 age groups).
 
-Worker counts are clamped to a minimum of 1 to avoid division-by-zero when
-this vector is used as a denominator (e.g. in contact-matrix scaling and the
-Rt callback). This matches the `+1` padding applied in `initial_state`.
+Represents contacts between consumer-sector workers and age groups.
+
+# Arguments
+- `cd::CountryData`: Population vector for 4 age groups
+- `scaled::Bool`: If true (default), contacts are scaled by age-group demographics
+
+# Returns
+A `Matrix{Float64}` of size (45, 4) with consumer-worker contact rates
 """
-function prepare_demog(cd::CountryData)
-    return prepare_demog(cd.demography, max.(cd.workers, 1))
+function consumer_worker_contacts(cd::CountryData; scaled = true)::Matrix{Float64}
+    ccw = repeat([1.0], N_ECON_GROUPS * N_AGE_GROUPS)
+    ccw = reshape(ccw, N_ECON_GROUPS, N_AGE_GROUPS)
+
+    demog = prepare_demog(cd)
+
+    # TODO: NEEDS TO READ REAL DATA, CURRENTLY USES DUMMY DATA
+    # colwise div by size of from groups
+    if scaled
+        ccw *= Diagonal(1 ./ demog[i_AGE_GROUPS])
+    end
+
+    return ccw
 end
 
 """
@@ -137,16 +110,6 @@ function expand_contacts(cm::Matrix{Float64})::Matrix{Float64}
     #     cd.workers; scaled = false))
 
     return cm_x
-end
-
-"""
-    consumer_worker_contacts(cd::CountryData; scaled=true)
-
-Get the 45×4 consumer-worker contact matrix scaled by the age-group
-demography in `cd`.
-"""
-function consumer_worker_contacts(cd::CountryData; scaled = true)
-    return consumer_worker_contacts(cd.demography; scaled = scaled)
 end
 
 """
@@ -272,15 +235,21 @@ function initial_state(cd::CountryData)
     init = reshape(init, 1, N_COMPARTMENTS)
     init = repeat(init, N_TOTAL_GROUPS)
 
-    dummy = zeros(N_TOTAL_GROUPS, N_COMPARTMENTS, N_VACCINE_STRATA)
-    dummy[:, :, i_UNVAX_STRATUM] = init
+    u = zeros(N_TOTAL_GROUPS, N_COMPARTMENTS, N_VACCINE_STRATA)
+    u[:, :, i_UNVAX_STRATUM] = init
 
     demog = copy(demography)
     inactive_workers = demog[i_WORKING_AGE] - sum(workers)
     demog[i_WORKING_AGE] = inactive_workers
     demog = [demog; workers]
 
-    return dummy .* demog
+    u = u .* demog # N_TOT_GRP x N_COMP x N_VAX
+    u = reshape(u, length(u))
+
+    # add new vax and Reff
+    u = [u; zeros(N_TOTAL_GROUPS); 0.0]
+
+    return u
 end
 
 """

@@ -129,6 +129,16 @@ function get_ngm(cm::Matrix{Float64}, beta::Float64,
     return ngm
 end
 
+function get_ngm(cm::Array{Float64, 3}, beta::Float64,
+        sigma::Float64, p_sigma::Float64, epsilon::Float64,
+        gamma_Ia::Float64, gamma_Is::Float64)::Matrix{Float64}
+    nrow = size(cm)[1]
+    ncol = size(cm)[2]
+    cm = reshape(sum(cm, dims = 3), nrow, ncol)
+
+    return get_ngm(cm, beta, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is)
+end
+
 """
     get_ngm(cm::Matrix, beta::Vector, sigma, p_sigma, epsilon, gamma_Ia, gamma_Is)::Vector{Matrix{Float64}}
 

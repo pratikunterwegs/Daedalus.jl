@@ -36,7 +36,7 @@ using Test
 
     # Test 4: Random matrix
     @testset "Random 10x10 matrix" begin
-        Random.seed!(42)
+        Random.seed!(1)
         A = rand(10, 10)
         λ_dom = Daedalus.Helpers.dominant_eigenvalue(A)
         λ_exact = maximum(real(eigen(A).values))
@@ -79,7 +79,7 @@ using Test
 
     # Test 6: Full contact matrix (49x49) with susceptible scaling
     @testset "Full 49x49 contact matrix with susceptible scaling" begin
-        Random.seed!(123)
+        Random.seed!(1)
 
         # Get the full contact matrix
         contacts = Daedalus.Data.prepare_contacts("Australia"; scaled = false)
@@ -174,9 +174,12 @@ end
 @testset "Rt calculation in make_rt_logger" begin
     @testset "Rt logging with power iteration" begin
         # Run a short simulation with Rt logging enabled
+        path = Daedalus.DataLoader.get_pathogen("sars-cov-2 delta")
+        r0 = path.r0
+
         result = Daedalus.daedalus(
             "Australia",
-            "sars-cov-2 delta",
+            path,
             time_end = 50.0,
             increment = 1.0,
             log_rt = true
@@ -188,7 +191,7 @@ end
 
         # Check that Rt values are reasonable
         @test all(rt_values .> 0)  # Rt should be positive
-        @test rt_values[1]≈2.0 atol=0.1  # Initial Rt should be close to r0
+        @test rt_values[1]≈r0 atol=0.1  # Initial Rt should be close to r0
 
         # Check that Rt decreases over time (as susceptibles are depleted)
         # This is expected behavior for an epidemic without interventions

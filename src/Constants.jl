@@ -82,8 +82,8 @@ function get_indices(
         groups::Union{Nothing, Int, AbstractVector{Int}, UnitRange{Int}} = nothing
 )
     if compartment == "Rt"
-        return N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA + N_TOTAL_GROUPS +
-               i_rel_Rt
+        return N_TOTAL_GROUPS * N_COMPARTMENTS * N_VACCINE_STRATA +
+               N_TOTAL_GROUPS + i_rel_Rt
     end
 
     if compartment == "vax"
